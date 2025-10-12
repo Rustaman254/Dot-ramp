@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, ChevronDown, Phone, AlertCircle, CheckCircle2, Copy, ExternalLink, Shield, Clock, Wallet, X, Check, ChevronRight } from 'lucide-react';
@@ -38,6 +38,8 @@ const walletProvidersMeta: WalletMeta[] = [
   { id: 'nova', name: 'Nova Wallet', icon: '⭐', description: 'Next-gen wallet for Polkadot', website: 'https://novawallet.io/' },
 ];
 
+const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
+
 const Home: React.FC = () => {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
   const [selectedToken, setSelectedToken] = useState<string>('DOT');
@@ -62,6 +64,20 @@ const Home: React.FC = () => {
     USDC: 0,
     DAI: 0,
   });
+
+  useEffect(() => {
+    const walletJson = typeof window !== "undefined" && localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (walletJson) {
+      const parsed = JSON.parse(walletJson);
+      const walletMeta = walletProvidersMeta.find(w => w.id === parsed.walletId);
+      if (walletMeta) {
+        setSelectedWalletInfo(walletMeta);
+        setWalletConnected(true);
+        setWalletAddress(parsed.address);
+        setUsername(parsed.username);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchRates() {
@@ -102,20 +118,50 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (showWalletSelector && accounts.length === 1) {
-      setWalletAddress(accounts[0].address);
-      setUsername(accounts[0].meta.name || `PolkadotUser`);
+      const address = accounts[0].address;
+      const name = accounts[0].meta.name || "PolkadotUser";
+      setWalletAddress(address);
+      setUsername(name);
       setWalletConnected(true);
       setShowWalletSelector(false);
       setAccounts([]);
+      setSelectedWalletInfo(selectedWalletInfo => {
+        if (selectedWalletInfo && typeof window !== "undefined") {
+          localStorage.setItem(
+            LOCAL_STORAGE_KEY,
+            JSON.stringify({
+              walletId: selectedWalletInfo.id,
+              address,
+              username: name
+            })
+          );
+        }
+        return selectedWalletInfo;
+      });
     }
   }, [showWalletSelector, accounts]);
 
   const handleSelectAccount = (account: Account) => {
-    setWalletAddress(account.address);
-    setUsername(account.meta.name || `PolkadotUser`);
+    const address = account.address;
+    const name = account.meta.name || "PolkadotUser";
+    setWalletAddress(address);
+    setUsername(name);
     setWalletConnected(true);
     setShowWalletSelector(false);
     setAccounts([]);
+    setSelectedWalletInfo(selectedWalletInfo => {
+      if (selectedWalletInfo && typeof window !== "undefined") {
+        localStorage.setItem(
+          LOCAL_STORAGE_KEY,
+          JSON.stringify({
+            walletId: selectedWalletInfo.id,
+            address,
+            username: name
+          })
+        );
+      }
+      return selectedWalletInfo;
+    });
   };
 
   const handleDisconnect = () => {
@@ -125,6 +171,9 @@ const Home: React.FC = () => {
     setSelectedWalletInfo(null);
     setShowWalletPopup(false);
     setStep('input');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
   };
 
   const copyAddress = () => {
@@ -163,34 +212,46 @@ const Home: React.FC = () => {
     setPhoneInput(value);
   };
 
-  const getMsisdn = () => phoneInput ? `254${phoneInput}` : "";
+  const getMsisdn = () => phoneInput.length === 9 && phoneInput[0] === "7" ? `254${phoneInput}` : "";
 
   useEffect(() => {
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let pollInterval: NodeJS.Timeout | null = null;
     if (step === 'processing' && merchantRequestId) {
-      pollInterval = setInterval(async () => {
-        const statusRes = await fetch(`http://localhost:8000/api/v1/mpesa/status?merchantRequestId=${merchantRequestId}`);
-        const statusData = await statusRes.json();
-        if (statusData.status === "success") {
-          setStep('success');
-          clearInterval(pollInterval!);
-        } else if (statusData.status === "cancelled") {
-          setStep('cancelled');
-          clearInterval(pollInterval!);
-        } else if (statusData.status === "failed") {
+      const pollStatus = async () => {
+        try {
+          const statusRes = await fetch(`http://localhost:8000/api/v1/mpesa/status?merchantRequestId=${merchantRequestId}`);
+          if (statusRes.status === 429) return;
+          if (statusRes.status === 404) return;
+          const statusData = await statusRes.json();
+          console.log(statusData)
+          if (statusData.status === "success") {
+            setStep('success');
+            if (pollInterval) clearInterval(pollInterval);
+          } else if (statusData.status === "cancelled") {
+            setStep('cancelled');
+            if (pollInterval) clearInterval(pollInterval);
+          } else if (statusData.status === "failed") {
+            setStep('failed');
+            if (pollInterval) clearInterval(pollInterval);
+          }
+        } catch (err) {
           setStep('failed');
-          clearInterval(pollInterval!);
+          if (pollInterval) clearInterval(pollInterval);
         }
-      }, 3000);
+      };
+      pollInterval = setInterval(pollStatus, 15000);
+      pollStatus();
     }
-    return () => {
-      if (pollInterval) clearInterval(pollInterval);
-    };
+    return () => { if (pollInterval) clearInterval(pollInterval); };
   }, [step, merchantRequestId]);
 
   const handleAmountInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "");
     setAmount(value);
+  };
+
+  const handleTokenChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedToken(e.target.value);
   };
 
   const handleContinue = async () => {
@@ -200,6 +261,10 @@ const Home: React.FC = () => {
       setStep('processing');
       if (mode === 'buy') {
         const msisdn = getMsisdn();
+        if (!msisdn) {
+          setStep('failed');
+          return;
+        }
         const response = await fetch('http://localhost:8000/api/v1/mpesa/stk-push', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -632,6 +697,29 @@ const Home: React.FC = () => {
                 >
                   Sell Crypto
                 </button>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm text-gray-400 mb-3">{mode === 'buy' ? 'You receive' : 'You send'}</label>
+                <div className="relative">
+                  <select
+                    value={selectedToken}
+                    onChange={handleTokenChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 pl-14 pr-10 appearance-none text-white font-medium focus:outline-none focus:border-emerald-500"
+                  >
+                    {tokens.map(token => (
+                      <option key={token.symbol} value={token.symbol}>
+                        {token.symbol} - {token.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-6 h-6" />
+                  </div>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  Current price: <span className="text-emerald-400 font-bold">KES {liveRatesKES[selectedToken] ? liveRatesKES[selectedToken].toFixed(2) : 'Loading...'}</span>
+                </p>
               </div>
               <div className="mb-6">
                 <label className="block text-sm text-gray-400 mb-3">{mode === 'buy' ? 'Amount to pay (KES)' : 'Amount to sell'}</label>

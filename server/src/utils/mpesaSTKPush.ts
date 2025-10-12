@@ -1,7 +1,6 @@
 import axios from "axios";
 import { getMpesaTimestamp, getMpesaPassword } from "./mpesaUtils.js";
 
-// Main STK Push function with correct rate limits and clean polling logic
 export async function sendMpesaStkPush({
   shortCode,
   passkey,
@@ -11,7 +10,8 @@ export async function sendMpesaStkPush({
   callbackUrl,
   accountReference,
   transactionDesc,
-  isLive = false
+  isLive = false,
+  statusStore
 }: {
   shortCode: string,
   passkey: string,
@@ -21,14 +21,14 @@ export async function sendMpesaStkPush({
   callbackUrl: string,
   accountReference: string,
   transactionDesc: string,
-  isLive?: boolean
+  isLive?: boolean,
+  statusStore?: any // this will be your mpesaStatusStore object
 }) {
   const timestamp = getMpesaTimestamp();
   const password = getMpesaPassword(shortCode, passkey, timestamp);
   const url = isLive
     ? "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
     : "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
-
   const stkRequest = {
     BusinessShortCode: shortCode,
     Password: password,
@@ -42,64 +42,46 @@ export async function sendMpesaStkPush({
     AccountReference: accountReference,
     TransactionDesc: transactionDesc,
   };
-
   const headers = {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   };
 
-  try {
-    const { data } = await axios.post(url, stkRequest, { headers });
+  const { data } = await axios.post(url, stkRequest, { headers });
+  if (data.ResponseCode !== "0") {
+    throw new Error(`STK Push request failed: ${data.ResponseDescription}`);
+  }
 
-    if (data.ResponseCode !== "0") {
-      throw new Error(`STK Push request failed: ${data.ResponseDescription}`);
-    }
-
-    // If successful, log it and perform status polling IF needed
-    console.log("STK Push request successful:", data);
-
-    // Correct polling logic (15 seconds interval, 3 attempts max)
-    let pollCount = 0;
-    const maxPolls = 1;
-    const pollIntervalMs = 10000; // 15 seconds per API rate limits[web:1]
-    let pollInterval: NodeJS.Timeout;
-
-    const quryURL = isLive
-      ? "https://api.safaricom.co.ke/mpesa/stkpushquery/v1/query"
-      : "https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query";
-
+  // For tutorial-style backend polling ONLY ON SANDBOX
+  if (!isLive && data.CheckoutRequestID && statusStore) {
+    const queryURL = "https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query";
     const queryRequest = {
       BusinessShortCode: shortCode,
       Password: password,
       Timestamp: timestamp,
       CheckoutRequestID: data.CheckoutRequestID
     };
-
-    pollInterval = setInterval(async () => {
-      pollCount++;
-      if (pollCount > maxPolls) {
-        clearInterval(pollInterval);
-        return;
-      }
+    setTimeout(async () => {
       try {
-        console.log("Querying STK Push status...");
-        const queryResponse = await axios.post(quryURL, queryRequest, { headers });
-        console.log("STK Push query response:", queryResponse.data);
-        if (
-          queryResponse.data.ResultCode === "0" ||
-          queryResponse.data.ResultDesc?.toLowerCase().includes("successful")
-        ) {
-          clearInterval(pollInterval);
-          // You may process the success further here if needed
+        const queryResponse = await axios.post(queryURL, queryRequest, { headers });
+        // If user already paid/cancelled, callback will have set status, so only update if pending
+        if (statusStore[data.MerchantRequestID]?.status === "pending") {
+          const result = queryResponse.data;
+          if (result.ResultCode === "0") {
+            statusStore[data.MerchantRequestID] = { status: "success", details: result };
+          } else if (result.ResultCode === "1032") {
+            statusStore[data.MerchantRequestID] = { status: "cancelled", details: result };
+          } else if (result.ResultCode === "1") {
+            statusStore[data.MerchantRequestID] = { status: "failed", details: result };
+          } else {
+            statusStore[data.MerchantRequestID] = { status: "failed", details: result };
+          }
         }
       } catch (err) {
-        console.error("Error querying STK Push status:", err);
+        // If polling fails, leave status as pending (let frontend/user retry or use callback)
       }
-    }, pollIntervalMs);
-
-    return data;
-  } catch (err: any) {
-    if (err.response) throw new Error(JSON.stringify(err.response.data));
-    throw err;
+    }, 15000); // 15 seconds, then check once
   }
+
+  return data;
 }
