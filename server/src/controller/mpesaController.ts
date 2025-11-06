@@ -12,8 +12,8 @@ const PASEO_ASSET_HUB_ENDPOINT = 'wss://pas-rpc.stakeworld.io/assethub'; // Pase
 const MNEMONIC = process.env.ADMIN_MNEMONIC as string;
 
 const ASSET_IDS: { [key: string]: number } = {
-  USDT: 1984, 
-  USDC: 1337, 
+  USDT: 1984,
+  USDC: 1337,
 };
 
 let relayApi: ApiPromise | null = null;
@@ -283,13 +283,16 @@ export const payout = async (
 
       const unsub = await tx.signAndSend(sender, ({ status, dispatchError }) => {
         if (status.isInBlock) {
+          const blockHash = status.asInBlock.toHex();
+          console.log(`Transaction included in block: ${blockHash}`);
           unsub();
           res.json({
             status: 'success',
-            block: status.asInBlock.toHex(),
+            block: blockHash,
             token: token,
             amount: amount,
-            chain: 'Paseo Relay'
+            assetId: assetId,
+            chain: 'Paseo Asset Hub'
           });
         } else if (dispatchError) {
           unsub();
@@ -297,8 +300,11 @@ export const payout = async (
             status: 'failed',
             error: dispatchError.toString()
           });
+        } else {
+          console.log(`Transaction status: ${status.type}`);
         }
       });
+
     } else if (token === 'USDT' || token === 'USDC' || token === 'DAI') {
       await connectAssetHub();
       if (!assetHubApi) {
@@ -321,9 +327,9 @@ export const payout = async (
       console.log(`Sending ${amount} ${token} (Asset ID: ${assetId}) to ${address}`);
 
       const unsub = await tx.signAndSend(sender, ({ status, dispatchError }) => {
-        console.log(`Transaction status: ${status.type} transaction at ${status.asInBlock?.toHex() || 'N/A'} transaction details - ${JSON.stringify(status)}`);
         console.log(`unsub: ${unsub}`);
         if (status.isInBlock) {
+          console.log(`Transaction included in block: ${status.asInBlock.toHex()}`);
           unsub();
           res.json({
             status: 'success',

@@ -24,17 +24,21 @@ export default function SendDot() {
           unsub()
         }
       })
-    } catch (err: any) {
-      setTxStatus(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setTxStatus(err.message)
+      } else {
+        setTxStatus('Unknown error')
+      }
     }
-  }
+}
 
-  return (
-    <div>
-      <input value={to} onChange={e => setTo(e.target.value)} placeholder="Recipient Address" />
-      <input value={amt} onChange={e => setAmt(e.target.value)} placeholder="Amount (DOT)" />
-      <button onClick={send}>Send DOT</button>
-      <div>{txStatus}</div>
-    </div>
-  )
+return (
+  <div>
+    <input value={to} onChange={e => setTo(e.target.value)} placeholder="Recipient Address" />
+    <input value={amt} onChange={e => setAmt(e.target.value)} placeholder="Amount (DOT)" />
+    <button onClick={send}>Send DOT</button>
+    <div>{txStatus}</div>
+  </div>
+)
 }

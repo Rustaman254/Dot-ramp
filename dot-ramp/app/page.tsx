@@ -25,7 +25,7 @@ const tokens: Token[] = [
   { symbol: 'DOT', name: 'Polkadot', icon: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png', color: '#E6007A' },
   { symbol: 'USDT', name: 'Tether USD', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png', color: '#26A17B' },
   { symbol: 'USDC', name: 'USD Coin', icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png', color: '#2775CA' },
-  { symbol: 'DAI', name: 'Dai', icon: 'https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png', color: '#F5AC37' },
+  // { symbol: 'DAI', name: 'Dai', icon: 'https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png', color: '#F5AC37' },
 ];
 
 const MPESA_FEE = 50;
@@ -95,15 +95,48 @@ const Home: React.FC = () => {
     fetchRates();
   }, []);
 
+  useEffect(() => {
+    console.log("mode", mode)
+    if (
+      step === 'success' &&
+      mode === 'buy' &&
+      walletConnected &&
+      walletAddress &&
+      cryptoAmount
+    ) {
+      fetch('http://localhost:8000/api/v1/payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: walletAddress,
+          amount: cryptoAmount,
+          token: selectedToken
+        })
+      })
+        .then(async res => {
+          if (!res.ok) {
+            const err = await res.json();
+            console.error('Payout failed:', err.error || err);
+          } else {
+            const response = await res.json();
+            console.log('Payout success:', response);
+          }
+        })
+        .catch(e => {
+          console.error('Payout error:', e);
+        });
+    }
+  }, [step, walletConnected, walletAddress, cryptoAmount, selectedToken, mode]);
+
+
   const handleOpenWalletSelector = async () => {
     const { web3Enable } = await import('@polkadot/extension-dapp');
     const enabled = await web3Enable('DotRamp');
-    const extensionNames = enabled.map((e: any) => e.name);
+    const extensionNames = enabled.map(e => e.name.toLowerCase());
     const installedWallets = walletProvidersMeta.filter(wallet =>
-      extensionNames.includes(wallet.id) || extensionNames.includes(wallet.name)
+      extensionNames.includes(wallet.id) || extensionNames.includes(wallet.name.toLowerCase())
     );
     setAvailableWallets(installedWallets);
-    if (enabled.length === 0) setAvailableWallets([]);
     setShowWalletSelector(true);
     setAccounts([]);
     setSelectedWalletInfo(null);
@@ -208,11 +241,14 @@ const Home: React.FC = () => {
     let value = e.target.value.replace(/\D/g, "");
     if (value.startsWith("0")) value = value.slice(1);
     if (value.length > 9) value = value.slice(0, 9);
-    if (value && value[0] !== "7") value = "";
+    if (value && !(value[0] === "7" || value[0] === "1")) value = "";
     setPhoneInput(value);
   };
 
-  const getMsisdn = () => phoneInput.length === 9 && phoneInput[0] === "7" ? `254${phoneInput}` : "";
+  const getMsisdn = () =>
+    phoneInput.length === 9 && (phoneInput[0] === "7" || phoneInput[0] === "1")
+      ? `254${phoneInput}`
+      : "";
 
   useEffect(() => {
     let pollInterval: NodeJS.Timeout | null = null;
@@ -239,7 +275,7 @@ const Home: React.FC = () => {
           if (pollInterval) clearInterval(pollInterval);
         }
       };
-      pollInterval = setInterval(pollStatus, 15000);
+      pollInterval = setInterval(pollStatus, 2000);
       pollStatus();
     }
     return () => { if (pollInterval) clearInterval(pollInterval); };
@@ -474,10 +510,15 @@ const Home: React.FC = () => {
           >
             Make Another Transaction
           </button>
-          <button className="w-full mt-3 text-gray-400 hover:text-white py-3 transition-colors flex items-center justify-center gap-2">
+          <a
+            href={`https://polkadot.js.org/apps/#/explorer/query/${walletAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full mt-3 text-gray-400 hover:text-white py-3 transition-colors flex items-center cursor-pointer justify-center gap-2"
+          >
             View on Explorer
             <ExternalLink className="w-4 h-4" />
-          </button>
+          </a>
         </div>
       </div>
     );
@@ -704,7 +745,7 @@ const Home: React.FC = () => {
                   <select
                     value={selectedToken}
                     onChange={handleTokenChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 pl-14 pr-10 appearance-none text-white font-medium focus:outline-none focus:border-emerald-500"
+                    className="w-full cursor-pointer bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 pl-14 pr-10 appearance-none text-white font-medium focus:outline-none focus:border-emerald-500"
                   >
                     {tokens.map(token => (
                       <option key={token.symbol} value={token.symbol}>

@@ -1,5 +1,6 @@
 "use client"
 import { useWallet, WalletModal } from 'polkadot-ui'
+import type { AccountInfo } from '@polkadot/types/interfaces';
 import { useEffect, useState } from 'react'
 import { createApi } from 'polkadot-api'
 
@@ -13,7 +14,8 @@ export default function WalletConnect() {
 
     async function fetchBalance() {
       const api = await createApi()
-      unsub = await api.query.system.account(account.address, ({ data: { free } }: any) => {
+      unsub = await api.query.system.account(account.address, (accountInfo: AccountInfo) => {
+        const free = accountInfo.data.free
         setDotBalance(api.registry.chainDecimals
           ? (Number(free) / Math.pow(10, api.registry.chainDecimals[0])).toLocaleString()
           : free.toString()

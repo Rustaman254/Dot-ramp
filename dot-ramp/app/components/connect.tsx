@@ -54,12 +54,12 @@ export default function Connect() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="btn btn-outline btn-sm font-mono"
+          className="btn cursor-pointer btn-outline btn-sm font-mono"
           onClick={openConnectModal}
         >
           {!selectedAccount
             ? (
-                <div className="flex items-center gap-2">
+                <div className="flex cursor-pointer items-center gap-2">
                   <span className="icon-[mdi--wallet] w-4 h-4" />
                   <span>Connect Wallet</span>
                 </div>
