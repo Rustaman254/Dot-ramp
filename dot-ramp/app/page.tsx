@@ -25,10 +25,24 @@ const tokens: Token[] = [
   { symbol: 'DOT', name: 'Polkadot', icon: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png', color: '#E6007A' },
   { symbol: 'USDT', name: 'Tether USD', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png', color: '#26A17B' },
   { symbol: 'USDC', name: 'USD Coin', icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png', color: '#2775CA' },
-  // { symbol: 'DAI', name: 'Dai', icon: 'https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png', color: '#F5AC37' },
+    { symbol: 'DAI', name: 'Dai', icon: 'https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png', color: '#F5AC37' },
 ];
 
-const MPESA_FEE = 50;
+const getMpesaFee = (amount: number) => {
+  if (amount <= 100) return 0;
+  if (amount <= 500) return 7;
+  if (amount <= 1000) return 13;
+  if (amount <= 1500) return 22;
+  if (amount <= 2500) return 32;
+  if (amount <= 3500) return 51;
+  if (amount <= 5000) return 55;
+  if (amount <= 7500) return 75;
+  if (amount <= 10000) return 87;
+  if (amount <= 15000) return 97;
+  if (amount <= 20000) return 102;
+  return 105;
+};
+
 const SERVICE_FEE = 0.02;
 
 const walletProvidersMeta: WalletMeta[] = [
@@ -221,15 +235,16 @@ const Home: React.FC = () => {
     if (amount && !isNaN(Number(amount)) && liveRatesKES[selectedToken]) {
       const tokenKES = liveRatesKES[selectedToken];
       const amountNum = parseFloat(amount);
+      const mpesaFee = getMpesaFee(amountNum);
       if (mode === 'buy') {
-        const netAmount = amountNum - MPESA_FEE;
+        const netAmount = amountNum - mpesaFee;
         const afterFee = netAmount * (1 - SERVICE_FEE);
         const crypto = (afterFee / tokenKES).toFixed(6);
         setCryptoAmount(crypto);
       } else {
         const fiatValue = amountNum * tokenKES;
         const afterFee = fiatValue * (1 - SERVICE_FEE);
-        const finalAmount = (afterFee - MPESA_FEE).toFixed(2);
+        const finalAmount = (afterFee - mpesaFee).toFixed(2);
         setCryptoAmount(finalAmount);
       }
     } else {
@@ -238,17 +253,24 @@ const Home: React.FC = () => {
   }, [amount, selectedToken, mode, liveRatesKES]);
 
   const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.startsWith("0")) value = value.slice(1);
-    if (value.length > 9) value = value.slice(0, 9);
-    if (value && !(value[0] === "7" || value[0] === "1")) value = "";
-    setPhoneInput(value);
+    const value = e.target.value;
+    const kenyanPhoneRegex = /^(?:254|\+254|0)?(7(?:(?:[01249][0-9])|(?:5[789])|(?:6[89]))[0-9]{6})$/;
+    if (kenyanPhoneRegex.test(value)) {
+      setPhoneInput(value);
+    } else {
+      // Optionally, handle invalid input, e.g., show an error message
+      setPhoneInput(value); // Or keep the old value
+    }
   };
 
-  const getMsisdn = () =>
-    phoneInput.length === 9 && (phoneInput[0] === "7" || phoneInput[0] === "1")
-      ? `254${phoneInput}`
-      : "";
+  const getMsisdn = () => {
+    const kenyanPhoneRegex = /^(?:254|\+254|0)?(7(?:(?:[01249][0-9])|(?:5[789])|(?:6[89]))[0-9]{6})$/;
+    const match = phoneInput.match(kenyanPhoneRegex);
+    if (match) {
+      return `254${match[1]}`;
+    }
+    return "";
+  };
 
   useEffect(() => {
     let pollInterval: NodeJS.Timeout | null = null;
@@ -636,7 +658,7 @@ const Home: React.FC = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">M-Pesa Fee</span>
-                <span className="font-medium">KES {MPESA_FEE}</span>
+                <span className="font-medium">KES {getMpesaFee(parseFloat(amount || '0'))}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Service Fee ({SERVICE_FEE * 100}%)</span>
@@ -817,7 +839,7 @@ const Home: React.FC = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between text-gray-400">
                     <span>M-Pesa Transaction Fee</span>
-                    <span className="text-white">KES {MPESA_FEE}</span>
+                    <span className="text-white">KES {getMpesaFee(parseFloat(amount || '0'))}</span>
                   </div>
                   <div className="flex justify-between text-gray-400">
                     <span>Service Fee</span>
@@ -826,7 +848,7 @@ const Home: React.FC = () => {
                   <div className="pt-3 border-t border-zinc-800 flex justify-between">
                     <span className="text-gray-400">Total Fees</span>
                     <span className="text-white font-medium">
-                      KES {(MPESA_FEE + parseFloat(amount || '0') * SERVICE_FEE).toFixed(2)}
+                      KES {(getMpesaFee(parseFloat(amount || '0')) + parseFloat(amount || '0') * SERVICE_FEE).toFixed(2)}
                     </span>
                   </div>
                 </div>
