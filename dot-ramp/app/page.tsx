@@ -53,6 +53,7 @@ const walletProvidersMeta: WalletMeta[] = [
 ];
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
+const PROD_URL = process.env.PROD_URL || 'http://localhost:8000'
 
 const Home: React.FC = () => {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
@@ -118,7 +119,7 @@ const Home: React.FC = () => {
       walletAddress &&
       cryptoAmount
     ) {
-      fetch('http://localhost:8000/api/v1/payout', {
+      fetch(`${PROD_URL}/api/v1/payout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -277,7 +278,7 @@ const Home: React.FC = () => {
     if (step === 'processing' && merchantRequestId) {
       const pollStatus = async () => {
         try {
-          const statusRes = await fetch(`http://localhost:8000/api/v1/mpesa/status?merchantRequestId=${merchantRequestId}`);
+          const statusRes = await fetch(`${PROD_URL}/api/v1/mpesa/status?merchantRequestId=${merchantRequestId}`);
           if (statusRes.status === 429) return;
           if (statusRes.status === 404) return;
           const statusData = await statusRes.json();
@@ -323,7 +324,7 @@ const Home: React.FC = () => {
           setStep('failed');
           return;
         }
-        const response = await fetch('http://localhost:8000/api/v1/mpesa/stk-push', {
+        const response = await fetch(`${PROD_URL}/api/v1/mpesa/stk-push`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
