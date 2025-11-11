@@ -68,9 +68,6 @@ interface MpesaCallback {
 
 const mpesaStatusStore: { [mid: string]: { status: string; details?: any } } = {};
 
-/**
- * POST /api/v1/mpesa/stk-push
- */
 export const mpesaController = async (
   req: Request,
   res: Response

@@ -53,7 +53,7 @@ const walletProvidersMeta: WalletMeta[] = [
 ];
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-const PROD_URL = process.env.PROD_URL || 'http://localhost:8000'
+const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || 'http://localhost:8000'
 
 const Home: React.FC = () => {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
@@ -828,7 +828,7 @@ const Home: React.FC = () => {
               <button
                 onClick={handleContinue}
                 disabled={!amount || !phoneInput}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-emerald-500 cursor-pointer hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 Continue
                 <ArrowRight className="w-5 h-5" />
