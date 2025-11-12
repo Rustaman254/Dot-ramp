@@ -29,9 +29,10 @@ export default function WalletConnect() {
   return (
     <div>
       {!wallet.connected ? (
-        <button onClick={open}>Connect Wallet</button>
+        // <button className='cursor-pointer' onClick={open}>Connect Wallet</button>
+        <></>
       ) : (
-        <div>
+        <div className='cursor-pointer'>
           <div>Account: {account?.address}</div>
           <div>DOT: {dotBalance}</div>
           <button onClick={disconnect}>Disconnect</button>

@@ -53,7 +53,8 @@ const walletProvidersMeta: WalletMeta[] = [
 ];
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || 'http://localhost:8000'
+const PROD_URL = process.env.PROD_URL || 'http://localhost:8000'
+console.log(PROD_URL);
 
 const Home: React.FC = () => {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
@@ -751,13 +752,13 @@ const Home: React.FC = () => {
               <div className="flex gap-2 mb-8 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
                 <button
                   onClick={() => setMode('buy')}
-                  className={`flex-1 py-3 rounded-lg font-medium transition-all ${mode === 'buy' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 cursor-pointer py-3 rounded-lg font-medium transition-all ${mode === 'buy' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white'}`}
                 >
                   Buy Crypto
                 </button>
                 <button
                   onClick={() => setMode('sell')}
-                  className={`flex-1 py-3 rounded-lg font-medium transition-all ${mode === 'sell' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-3 cursor-pointer rounded-lg font-medium transition-all ${mode === 'sell' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white'}`}
                 >
                   Sell Crypto
                 </button>
@@ -771,7 +772,7 @@ const Home: React.FC = () => {
                     className="w-full cursor-pointer bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 pl-14 pr-10 appearance-none text-white font-medium focus:outline-none focus:border-emerald-500"
                   >
                     {tokens.map(token => (
-                      <option key={token.symbol} value={token.symbol}>
+                      <option className='cursor-pointer' key={token.symbol} value={token.symbol}>
                         {token.symbol} - {token.name}
                       </option>
                     ))}
@@ -828,7 +829,7 @@ const Home: React.FC = () => {
               <button
                 onClick={handleContinue}
                 disabled={!amount || !phoneInput}
-                className="w-full bg-emerald-500 cursor-pointer hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 Continue
                 <ArrowRight className="w-5 h-5" />

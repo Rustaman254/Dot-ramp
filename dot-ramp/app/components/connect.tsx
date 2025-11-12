@@ -59,10 +59,11 @@ export default function Connect() {
         >
           {!selectedAccount
             ? (
-                <div className="flex cursor-pointer items-center gap-2">
-                  <span className="icon-[mdi--wallet] w-4 h-4" />
-                  <span>Connect Wallet</span>
-                </div>
+                // <div className="flex cursor-pointer items-center gap-2">
+                //   <span className="icon-[mdi--wallet] w-4 h-4" />
+                //   <span>Connect Wallet</span>
+                // </div>
+                <></>
               )
             : (
                 <div className="flex items-center gap-2">
