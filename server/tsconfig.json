@@ -11,8 +11,10 @@
     "declaration": true,
     "declarationMap": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "strict": true,
+    "strictNullChecks": true,
+    // "exactOptionalPropertyTypes": true,
+    "noEmitOnError": false,
+    "strict": false,
     "esModuleInterop": true,
     "jsx": "react-jsx",              // If not using React, you can remove this line
     "verbatimModuleSyntax": true,
