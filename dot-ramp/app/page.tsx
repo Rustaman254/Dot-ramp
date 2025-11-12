@@ -53,8 +53,8 @@ const walletProvidersMeta: WalletMeta[] = [
 ];
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-const PROD_URL = process.env.PROD_URL || 'http://localhost:8000'
-console.log(PROD_URL);
+const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || 'http://localhost:8000'
+console.log(PROD_URL)
 
 const Home: React.FC = () => {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
