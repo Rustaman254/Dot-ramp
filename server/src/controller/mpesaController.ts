@@ -35,15 +35,24 @@ const connectRelay = async (): Promise<void> => {
     await relayApi.isReady;
     console.log('Connected to Paseo Relay Chain');
   }
+  const connectAssetHub = async (): Promise<void> => {
+    if (!assetHubApi) {
+      const ws = new WsProvider(PASEO_ASSET_HUB_ENDPOINT);
+      // Cast the WsProvider to any to avoid strict ProviderInterface incompatibility
+      assetHubApi = await ApiPromise.create({ provider: ws as unknown as any });
+      await assetHubApi.isReady;
+      console.log('Connected to Paseo Asset Hub');
+    }
+  };
+};
+
 const connectAssetHub = async (): Promise<void> => {
   if (!assetHubApi) {
     const ws = new WsProvider(PASEO_ASSET_HUB_ENDPOINT);
-    // Cast the WsProvider to any to avoid strict ProviderInterface incompatibility
     assetHubApi = await ApiPromise.create({ provider: ws as unknown as any });
     await assetHubApi.isReady;
     console.log('Connected to Paseo Asset Hub');
   }
-};
 };
 interface PayoutBody {
   address: string;
@@ -276,27 +285,41 @@ export const payout = async (
         });
       }
       const planck = BigInt(Math.floor(amountNum * 1e10));
-      const tx = relayApi.tx.balances.transferKeepAlive(address, planck.toString());
-      const unsub = await tx.signAndSend(sender, ({ status, dispatchError }) => {
-        if (status.isInBlock) {
-          const blockHash = status.asInBlock.toHex();
-          unsub();
-          res.json({
-            status: 'success',
-            block: blockHash,
-            token: token,
-            amount: amount,
-            assetId: null,
-            chain: 'Paseo Relay Chain',
-          });
-        } else if (dispatchError) {
-          unsub();
-          res.status(500).json({
-            status: 'failed',
-            error: dispatchError.toString(),
-          });
-        }
-      });
+      if (
+        relayApi
+        && relayApi.tx
+        && relayApi.tx.balances
+        && typeof relayApi.tx.balances.transferKeepAlive === "function"
+      ) {
+        // Safe: all properties exist and transferKeepAlive is a function
+        const tx = relayApi.tx.balances.transferKeepAlive(address, planck.toString());
+        const unsub = await tx.signAndSend(sender, ({ status, dispatchError }) => {
+          if (status.isInBlock) {
+            const blockHash = status.asInBlock.toHex();
+            unsub();
+            res.json({
+              status: 'success',
+              block: blockHash,
+              token: token,
+              amount: amount,
+              assetId: null,
+              chain: 'Paseo Relay Chain',
+            });
+          } else if (dispatchError) {
+            unsub();
+            res.status(500).json({
+              status: 'failed',
+              error: dispatchError.toString(),
+            });
+          }
+        });
+      } else {
+        // Handle the error gracefully
+        return res.status(500).json({
+          status: 'failed',
+          error: 'transferKeepAlive method is not available on relayApi',
+        });
+      }
     } else if (token === 'USDT' || token === 'USDC' || token === 'DAI') {
       await connectAssetHub();
       if (!assetHubApi) {
