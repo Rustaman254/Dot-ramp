@@ -479,7 +479,7 @@ const Home: React.FC = () => {
               </div>
             </div>
           </div>
-          <button onClick={handleDisconnect} className="w-full bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 py-3 rounded-xl transition-colors font-medium">
+          <button onClick={handleDisconnect} className="w-full cursor-pointer cursor-pointer bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 py-3 rounded-xl transition-colors font-medium">
             Disconnect Wallet
           </button>
         </div>
@@ -748,7 +748,7 @@ const Home: React.FC = () => {
             </p>
             <button
               onClick={handleOpenWalletSelector}
-              className="bg-emerald-500 hover:bg-emerald-600 text-black font-medium px-8 py-4 rounded-xl transition-colors inline-flex items-center gap-2"
+              className="bg-emerald-500 !cursor-pointer hover:bg-emerald-600 text-black font-medium px-8 py-4 rounded-xl transition-colors inline-flex items-center gap-2"
             >
               <Wallet className="w-5 h-5" />
               Connect Wallet
