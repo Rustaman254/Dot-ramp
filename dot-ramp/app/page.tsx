@@ -1,7 +1,23 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, ChevronDown, Phone, AlertCircle, CheckCircle2, Copy, ExternalLink, Shield, Clock, Wallet, X, Check, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  ChevronDown,
+  Phone,
+  AlertCircle,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  Shield,
+  Clock,
+  Wallet,
+  X,
+  Check,
+  ChevronRight,
+} from "lucide-react";
+import Header from "@/app/components/header";
 
 type Token = {
   symbol: string;
@@ -22,10 +38,10 @@ type Account = {
 };
 
 const tokens: Token[] = [
-  { symbol: 'DOT', name: 'Polkadot', icon: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png', color: '#E6007A' },
-  { symbol: 'USDT', name: 'Tether USD', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png', color: '#26A17B' },
-  { symbol: 'USDC', name: 'USD Coin', icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png', color: '#2775CA' },
-    { symbol: 'DAI', name: 'Dai', icon: 'https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png', color: '#F5AC37' },
+  { symbol: "DOT", name: "Polkadot", icon: "https://cryptologos.cc/logos/polkadot-new-dot-logo.png", color: "#E6007A" },
+  { symbol: "USDT", name: "Tether USD", icon: "https://cryptologos.cc/logos/tether-usdt-logo.png", color: "#26A17B" },
+  { symbol: "USDC", name: "USD Coin", icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", color: "#2775CA" },
+  { symbol: "DAI", name: "Dai", icon: "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png", color: "#F5AC37" },
 ];
 
 const getMpesaFee = (amount: number) => {
@@ -46,27 +62,31 @@ const getMpesaFee = (amount: number) => {
 const SERVICE_FEE = 0.02;
 
 const walletProvidersMeta: WalletMeta[] = [
-  { id: 'talisman', name: 'Talisman', icon: '🔮', description: 'A wallet for Polkadot & Ethereum', website: 'https://talisman.xyz/' },
-  { id: 'polkadot-js', name: 'Polkadot{.js}', icon: '⬤', description: 'Browser extension for Polkadot', website: 'https://polkadot.js.org/extension/' },
-  { id: 'subwallet-js', name: 'SubWallet', icon: '◆', description: 'Multi-chain wallet for Polkadot', website: 'https://subwallet.app/' },
-  { id: 'nova', name: 'Nova Wallet', icon: '⭐', description: 'Next-gen wallet for Polkadot', website: 'https://novawallet.io/' },
+  { id: "talisman", name: "Talisman", icon: "🔮", description: "A wallet for Polkadot & Ethereum", website: "https://talisman.xyz/" },
+  { id: "polkadot-js", name: "Polkadot{.js}", icon: "⬤", description: "Browser extension for Polkadot", website: "https://polkadot.js.org/extension/" },
+  { id: "subwallet-js", name: "SubWallet", icon: "◆", description: "Multi-chain wallet for Polkadot", website: "https://subwallet.app/" },
+  { id: "nova", name: "Nova Wallet", icon: "⭐", description: "Next-gen wallet for Polkadot", website: "https://novawallet.io/" },
 ];
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || 'http://localhost:8000'
+const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
+console.log(PROD_URL)
 
 const Home: React.FC = () => {
-  const [mode, setMode] = useState<'buy' | 'sell'>('buy');
-  const [selectedToken, setSelectedToken] = useState<string>('DOT');
-  const [amount, setAmount] = useState<string>('');
-  const [phoneInput, setPhoneInput] = useState<string>('');
-  const [cryptoAmount, setCryptoAmount] = useState<string>('');
-  const [step, setStep] = useState<'input' | 'confirm' | 'processing' | 'success' | 'failed' | 'cancelled'>('input');
-  const [txId, setTxId] = useState<string>('');
-  const [merchantRequestId, setMerchantRequestId] = useState<string>('');
+  const router = useRouter();
+  const [mode, setMode] = useState<"buy" | "sell">("buy");
+  const [selectedToken, setSelectedToken] = useState<string>("DOT");
+  const [amount, setAmount] = useState<string>("");
+  const [phoneInput, setPhoneInput] = useState<string>("");
+  const [cryptoAmount, setCryptoAmount] = useState<string>("");
+  const [step, setStep] = useState<
+    "input" | "confirm" | "processing" | "success" | "failed" | "cancelled"
+  >("input");
+  const [txId, setTxId] = useState<string>("");
+  const [merchantRequestId, setMerchantRequestId] = useState<string>("");
   const [walletConnected, setWalletConnected] = useState<boolean>(false);
-  const [walletAddress, setWalletAddress] = useState<string>('');
-  const [username, setUsername] = useState<string>('');
+  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
   const [showWalletPopup, setShowWalletPopup] = useState<boolean>(false);
   const [showWalletSelector, setShowWalletSelector] = useState<boolean>(false);
   const [copiedAddress, setCopiedAddress] = useState<boolean>(false);
@@ -84,7 +104,7 @@ const Home: React.FC = () => {
     const walletJson = typeof window !== "undefined" && localStorage.getItem(LOCAL_STORAGE_KEY);
     if (walletJson) {
       const parsed = JSON.parse(walletJson);
-      const walletMeta = walletProvidersMeta.find(w => w.id === parsed.walletId);
+      const walletMeta = walletProvidersMeta.find((w) => w.id === parsed.walletId);
       if (walletMeta) {
         setSelectedWalletInfo(walletMeta);
         setWalletConnected(true);
@@ -97,13 +117,13 @@ const Home: React.FC = () => {
   useEffect(() => {
     async function fetchRates() {
       const response = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=polkadot,tether,usd-coin,dai&vs_currencies=kes'
+        "https://api.coingecko.com/api/v3/simple/price?ids=polkadot,tether,usd-coin,dai&vs_currencies=kes"
       );
       const data = await response.json();
       setLiveRatesKES({
         DOT: data.polkadot?.kes || 0,
         USDT: data.tether?.kes || 0,
-        USDC: data['usd-coin']?.kes || 0,
+        USDC: data["usd-coin"]?.kes || 0,
         DAI: data.dai?.kes || 0,
       });
     }
@@ -111,45 +131,45 @@ const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    console.log("mode", mode)
     if (
-      step === 'success' &&
-      mode === 'buy' &&
+      step === "success" &&
+      mode === "buy" &&
       walletConnected &&
       walletAddress &&
       cryptoAmount
     ) {
       fetch(`${PROD_URL}/api/v1/payout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: walletAddress,
           amount: cryptoAmount,
-          token: selectedToken
-        })
+          token: selectedToken,
+        }),
       })
-        .then(async res => {
+        .then(async (res) => {
           if (!res.ok) {
             const err = await res.json();
-            console.error('Payout failed:', err.error || err);
+            console.error("Payout failed:", err.error || err);
           } else {
             const response = await res.json();
-            console.log('Payout success:', response);
+            console.log("Payout success:", response);
           }
         })
-        .catch(e => {
-          console.error('Payout error:', e);
+        .catch((e) => {
+          console.error("Payout error:", e);
         });
     }
   }, [step, walletConnected, walletAddress, cryptoAmount, selectedToken, mode]);
 
-
   const handleOpenWalletSelector = async () => {
-    const { web3Enable } = await import('@polkadot/extension-dapp');
-    const enabled = await web3Enable('DotRamp');
-    const extensionNames = enabled.map(e => e.name.toLowerCase());
-    const installedWallets = walletProvidersMeta.filter(wallet =>
-      extensionNames.includes(wallet.id) || extensionNames.includes(wallet.name.toLowerCase())
+    const { web3Enable } = await import("@polkadot/extension-dapp");
+    const enabled = await web3Enable("DotRamp");
+    const extensionNames = enabled.map((e) => e.name.toLowerCase());
+    const installedWallets = walletProvidersMeta.filter(
+      (wallet) =>
+        extensionNames.includes(wallet.id) ||
+        extensionNames.includes(wallet.name.toLowerCase())
     );
     setAvailableWallets(installedWallets);
     setShowWalletSelector(true);
@@ -158,7 +178,7 @@ const Home: React.FC = () => {
   };
 
   const handleSelectWallet = async (wallet: WalletMeta) => {
-    const { web3Accounts } = await import('@polkadot/extension-dapp');
+    const { web3Accounts } = await import("@polkadot/extension-dapp");
     const fetchedAccounts: Account[] = await web3Accounts();
     setSelectedWalletInfo(wallet);
     setAccounts(fetchedAccounts);
@@ -173,14 +193,14 @@ const Home: React.FC = () => {
       setWalletConnected(true);
       setShowWalletSelector(false);
       setAccounts([]);
-      setSelectedWalletInfo(selectedWalletInfo => {
+      setSelectedWalletInfo((selectedWalletInfo) => {
         if (selectedWalletInfo && typeof window !== "undefined") {
           localStorage.setItem(
             LOCAL_STORAGE_KEY,
             JSON.stringify({
               walletId: selectedWalletInfo.id,
               address,
-              username: name
+              username: name,
             })
           );
         }
@@ -197,14 +217,14 @@ const Home: React.FC = () => {
     setWalletConnected(true);
     setShowWalletSelector(false);
     setAccounts([]);
-    setSelectedWalletInfo(selectedWalletInfo => {
+    setSelectedWalletInfo((selectedWalletInfo) => {
       if (selectedWalletInfo && typeof window !== "undefined") {
         localStorage.setItem(
           LOCAL_STORAGE_KEY,
           JSON.stringify({
             walletId: selectedWalletInfo.id,
             address,
-            username: name
+            username: name,
           })
         );
       }
@@ -214,11 +234,11 @@ const Home: React.FC = () => {
 
   const handleDisconnect = () => {
     setWalletConnected(false);
-    setWalletAddress('');
-    setUsername('');
+    setWalletAddress("");
+    setUsername("");
     setSelectedWalletInfo(null);
     setShowWalletPopup(false);
-    setStep('input');
+    setStep("input");
     if (typeof window !== "undefined") {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
@@ -230,14 +250,15 @@ const Home: React.FC = () => {
     setTimeout(() => setCopiedAddress(false), 2000);
   };
 
-  const formatAddress = (addr: string): string => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const formatAddress = (addr: string): string =>
+    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   useEffect(() => {
     if (amount && !isNaN(Number(amount)) && liveRatesKES[selectedToken]) {
       const tokenKES = liveRatesKES[selectedToken];
       const amountNum = parseFloat(amount);
       const mpesaFee = getMpesaFee(amountNum);
-      if (mode === 'buy') {
+      if (mode === "buy") {
         const netAmount = amountNum - mpesaFee;
         const afterFee = netAmount * (1 - SERVICE_FEE);
         const crypto = (afterFee / tokenKES).toFixed(6);
@@ -249,23 +270,24 @@ const Home: React.FC = () => {
         setCryptoAmount(finalAmount);
       }
     } else {
-      setCryptoAmount('');
+      setCryptoAmount("");
     }
   }, [amount, selectedToken, mode, liveRatesKES]);
 
   const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    const kenyanPhoneRegex = /^(?:254|\+254|0)?(7(?:(?:[01249][0-9])|(?:5[789])|(?:6[89]))[0-9]{6})$/;
+    const kenyanPhoneRegex =
+      /^(?:254|\+254|0)?(7(?:(?:[01249][0-9])|(?:5[789])|(?:6[89]))[0-9]{6})$/;
     if (kenyanPhoneRegex.test(value)) {
       setPhoneInput(value);
     } else {
-      // Optionally, handle invalid input, e.g., show an error message
-      setPhoneInput(value); // Or keep the old value
+      setPhoneInput(value);
     }
   };
 
   const getMsisdn = () => {
-    const kenyanPhoneRegex = /^(?:254|\+254|0)?(7(?:(?:[01249][0-9])|(?:5[789])|(?:6[89]))[0-9]{6})$/;
+    const kenyanPhoneRegex =
+      /^(?:254|\+254|0)?(7(?:(?:[01249][0-9])|(?:5[789])|(?:6[89]))[0-9]{6})$/;
     const match = phoneInput.match(kenyanPhoneRegex);
     if (match) {
       return `254${match[1]}`;
@@ -275,33 +297,36 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     let pollInterval: NodeJS.Timeout | null = null;
-    if (step === 'processing' && merchantRequestId) {
+    if (step === "processing" && merchantRequestId) {
       const pollStatus = async () => {
         try {
-          const statusRes = await fetch(`${PROD_URL}/api/v1/mpesa/status?merchantRequestId=${merchantRequestId}`);
+          const statusRes = await fetch(
+            `${PROD_URL}/api/v1/mpesa/status?merchantRequestId=${merchantRequestId}`
+          );
           if (statusRes.status === 429) return;
           if (statusRes.status === 404) return;
           const statusData = await statusRes.json();
-          console.log(statusData)
           if (statusData.status === "success") {
-            setStep('success');
+            setStep("success");
             if (pollInterval) clearInterval(pollInterval);
           } else if (statusData.status === "cancelled") {
-            setStep('cancelled');
+            setStep("cancelled");
             if (pollInterval) clearInterval(pollInterval);
           } else if (statusData.status === "failed") {
-            setStep('failed');
+            setStep("failed");
             if (pollInterval) clearInterval(pollInterval);
           }
         } catch (err) {
-          setStep('failed');
+          setStep("failed");
           if (pollInterval) clearInterval(pollInterval);
         }
       };
       pollInterval = setInterval(pollStatus, 2000);
       pollStatus();
     }
-    return () => { if (pollInterval) clearInterval(pollInterval); };
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [step, merchantRequestId]);
 
   const handleAmountInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,23 +339,23 @@ const Home: React.FC = () => {
   };
 
   const handleContinue = async () => {
-    if (step === 'input') {
-      setStep('confirm');
-    } else if (step === 'confirm') {
-      setStep('processing');
-      if (mode === 'buy') {
+    if (step === "input") {
+      setStep("confirm");
+    } else if (step === "confirm") {
+      setStep("processing");
+      if (mode === "buy") {
         const msisdn = getMsisdn();
         if (!msisdn) {
-          setStep('failed');
+          setStep("failed");
           return;
         }
         const response = await fetch(`${PROD_URL}/api/v1/mpesa/stk-push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: amount,
-            phone: msisdn
-          })
+            phone: msisdn,
+          }),
         });
         const data = await response.json();
         if (data.MerchantRequestID) {
@@ -341,7 +366,8 @@ const Home: React.FC = () => {
     }
   };
 
-  const selectedTokenData = tokens.find(t => t.symbol === selectedToken) ?? tokens[0];
+  const selectedTokenData =
+    tokens.find((t) => t.symbol === selectedToken) ?? tokens[0];
 
   if (showWalletSelector) {
     return (
@@ -461,7 +487,7 @@ const Home: React.FC = () => {
     );
   }
 
-  if (step === 'processing') {
+  if (step === "processing") {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full">
@@ -486,7 +512,7 @@ const Home: React.FC = () => {
     );
   }
 
-  if (step === 'success') {
+  if (step === "success") {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full">
@@ -496,19 +522,19 @@ const Home: React.FC = () => {
             </div>
             <h2 className="text-2xl font-medium mb-2">Transaction Complete</h2>
             <p className="text-gray-400">
-              {mode === 'buy' ? 'Tokens sent to your wallet' : 'M-Pesa payment sent'}
+              {mode === "buy" ? "Tokens sent to your wallet" : "M-Pesa payment sent"}
             </p>
           </div>
           <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-6">
             <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-800">
-              <span className="text-gray-400">You {mode === 'buy' ? 'paid' : 'received'}</span>
+              <span className="text-gray-400">You {mode === "buy" ? "paid" : "received"}</span>
               <span className="text-xl font-medium">KES {amount}</span>
             </div>
             <div className="flex justify-between items-center mb-4">
-              <span className="text-gray-400">You {mode === 'buy' ? 'received' : 'sent'}</span>
+              <span className="text-gray-400">You {mode === "buy" ? "received" : "sent"}</span>
               <div className="flex items-center gap-2">
                 <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-5 h-5" />
-                <span className="text-xl font-medium">{mode === 'buy' ? cryptoAmount : amount} {selectedTokenData.symbol}</span>
+                <span className="text-xl font-medium">{mode === "buy" ? cryptoAmount : amount} {selectedTokenData.symbol}</span>
               </div>
             </div>
             <div className="pt-4 border-t border-zinc-800">
@@ -523,11 +549,11 @@ const Home: React.FC = () => {
           </div>
           <button
             onClick={() => {
-              setStep('input');
-              setAmount('');
-              setPhoneInput('');
-              setCryptoAmount('');
-              setMerchantRequestId('');
+              setStep("input");
+              setAmount("");
+              setPhoneInput("");
+              setCryptoAmount("");
+              setMerchantRequestId("");
             }}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
           >
@@ -547,7 +573,7 @@ const Home: React.FC = () => {
     );
   }
 
-  if (step === 'failed') {
+  if (step === "failed") {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full">
@@ -562,11 +588,11 @@ const Home: React.FC = () => {
           </div>
           <button
             onClick={() => {
-              setStep('input');
-              setAmount('');
-              setPhoneInput('');
-              setCryptoAmount('');
-              setMerchantRequestId('');
+              setStep("input");
+              setAmount("");
+              setPhoneInput("");
+              setCryptoAmount("");
+              setMerchantRequestId("");
             }}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
           >
@@ -577,7 +603,7 @@ const Home: React.FC = () => {
     );
   }
 
-  if (step === 'cancelled') {
+  if (step === "cancelled") {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full">
@@ -592,11 +618,11 @@ const Home: React.FC = () => {
           </div>
           <button
             onClick={() => {
-              setStep('input');
-              setAmount('');
-              setPhoneInput('');
-              setCryptoAmount('');
-              setMerchantRequestId('');
+              setStep("input");
+              setAmount("");
+              setPhoneInput("");
+              setCryptoAmount("");
+              setMerchantRequestId("");
             }}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
           >
@@ -607,13 +633,13 @@ const Home: React.FC = () => {
     );
   }
 
-  if (step === 'confirm') {
+  if (step === "confirm") {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full">
           <div className="mb-8">
             <button
-              onClick={() => setStep('input')}
+              onClick={() => setStep("input")}
               className="text-gray-400 hover:text-white mb-4"
             >
               ← Back
@@ -659,18 +685,18 @@ const Home: React.FC = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">M-Pesa Fee</span>
-                <span className="font-medium">KES {getMpesaFee(parseFloat(amount || '0'))}</span>
+                <span className="font-medium">KES {getMpesaFee(parseFloat(amount || "0"))}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Service Fee ({SERVICE_FEE * 100}%)</span>
-                <span className="font-medium">KES {(parseFloat(amount || '0') * SERVICE_FEE).toFixed(2)}</span>
+                <span className="font-medium">KES {(parseFloat(amount || "0") * SERVICE_FEE).toFixed(2)}</span>
               </div>
               <div className="pt-4 border-t border-zinc-800 flex justify-between items-center">
-                <span className="text-gray-400">You {mode === 'buy' ? 'receive' : 'get'}</span>
+                <span className="text-gray-400">You {mode === "buy" ? "receive" : "get"}</span>
                 <div className="flex items-center gap-2">
                   <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-6 h-6" />
                   <span className="text-xl font-medium text-emerald-400">
-                    {cryptoAmount} {mode === 'buy' ? selectedTokenData.symbol : 'KES'}
+                    {cryptoAmount} {mode === "buy" ? selectedTokenData.symbol : "KES"}
                   </span>
                 </div>
               </div>
@@ -700,35 +726,16 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="border-b border-zinc-800">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-medium">DotRamp</h1>
-          </div>
-          {walletConnected ? (
-            <button
-              onClick={() => setShowWalletPopup(true)}
-              className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-emerald-500 rounded-xl px-4 py-3 transition-colors"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-sm font-bold text-black">
-                {username.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="text-left">
-                <div className="text-sm font-medium">{username}</div>
-                <div className="text-xs text-gray-400 font-mono">{formatAddress(walletAddress)}</div>
-              </div>
-            </button>
-          ) : (
-            <button
-              onClick={handleOpenWalletSelector}
-              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-black font-medium px-6 py-3 rounded-xl transition-colors"
-            >
-              <Wallet className="w-5 h-5" />
-              Connect Wallet
-            </button>
-          )}
-        </div>
-      </div>
+      <Header
+        walletConnected={walletConnected}
+        username={username}
+        walletAddress={walletAddress}
+        formatAddress={formatAddress}
+        onShowWalletPopup={() => setShowWalletPopup(true)}
+        onConnectWallet={handleOpenWalletSelector}
+        onShowTransactions={() => router.push("/transactions")}
+        integrationLink="/dev-docs"
+      />
       <div className="max-w-4xl mx-auto px-4 py-8">
         {!walletConnected ? (
           <div className="text-center py-20">
@@ -736,7 +743,9 @@ const Home: React.FC = () => {
               <Wallet className="w-10 h-10 text-gray-400" />
             </div>
             <h2 className="text-2xl font-medium mb-2">Connect Your Wallet</h2>
-            <p className="text-gray-400 mb-8">Connect your Polkadot wallet to start buying and selling crypto</p>
+            <p className="text-gray-400 mb-8">
+              Connect your Polkadot wallet to start buying and selling crypto
+            </p>
             <button
               onClick={handleOpenWalletSelector}
               className="bg-emerald-500 hover:bg-emerald-600 text-black font-medium px-8 py-4 rounded-xl transition-colors inline-flex items-center gap-2"
@@ -750,43 +759,67 @@ const Home: React.FC = () => {
             <div>
               <div className="flex gap-2 mb-8 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
                 <button
-                  onClick={() => setMode('buy')}
-                  className={`flex-1 cursor-pointer py-3 rounded-lg font-medium transition-all ${mode === 'buy' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                  onClick={() => setMode("buy")}
+                  className={`flex-1 cursor-pointer py-3 rounded-lg font-medium transition-all ${mode === "buy"
+                    ? "bg-emerald-500 text-black"
+                    : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   Buy Crypto
                 </button>
                 <button
-                  onClick={() => setMode('sell')}
-                  className={`flex-1 py-3 cursor-pointer rounded-lg font-medium transition-all ${mode === 'sell' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                  onClick={() => setMode("sell")}
+                  className={`flex-1 py-3 cursor-pointer rounded-lg font-medium transition-all ${mode === "sell"
+                    ? "bg-emerald-500 text-black"
+                    : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   Sell Crypto
                 </button>
               </div>
               <div className="mb-6">
-                <label className="block text-sm text-gray-400 mb-3">{mode === 'buy' ? 'You receive' : 'You send'}</label>
+                <label className="block text-sm text-gray-400 mb-3">
+                  {mode === "buy" ? "You receive" : "You send"}
+                </label>
                 <div className="relative">
                   <select
                     value={selectedToken}
                     onChange={handleTokenChange}
                     className="w-full cursor-pointer bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 pl-14 pr-10 appearance-none text-white font-medium focus:outline-none focus:border-emerald-500"
                   >
-                    {tokens.map(token => (
-                      <option className='cursor-pointer' key={token.symbol} value={token.symbol}>
+                    {tokens.map((token) => (
+                      <option
+                        className="cursor-pointer"
+                        key={token.symbol}
+                        value={token.symbol}
+                      >
                         {token.symbol} - {token.name}
                       </option>
                     ))}
                   </select>
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-6 h-6" />
+                    <img
+                      src={selectedTokenData.icon}
+                      alt={selectedTokenData.symbol}
+                      className="w-6 h-6"
+                    />
                   </div>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  Current price: <span className="text-emerald-400 font-bold">KES {liveRatesKES[selectedToken] ? liveRatesKES[selectedToken].toFixed(2) : 'Loading...'}</span>
+                  Current price:{" "}
+                  <span className="text-emerald-400 font-bold">
+                    KES{" "}
+                    {liveRatesKES[selectedToken]
+                      ? liveRatesKES[selectedToken].toFixed(2)
+                      : "Loading..."}
+                  </span>
                 </p>
               </div>
               <div className="mb-6">
-                <label className="block text-sm text-gray-400 mb-3">{mode === 'buy' ? 'Amount to pay (KES)' : 'Amount to sell'}</label>
+                <label className="block text-sm text-gray-400 mb-3">
+                  {mode === "buy" ? "Amount to pay (KES)" : "Amount to sell"}
+                </label>
                 <div className="relative">
                   <input
                     type="number"
@@ -795,14 +828,20 @@ const Home: React.FC = () => {
                     placeholder="0.00"
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 text-2xl font-medium focus:outline-none focus:border-emerald-500"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">{mode === 'buy' ? 'KES' : selectedTokenData.symbol}</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    {mode === "buy" ? "KES" : selectedTokenData.symbol}
+                  </span>
                 </div>
               </div>
               <div className="mb-6">
-                <label className="block text-sm text-gray-400 mb-3">M-Pesa Phone Number</label>
+                <label className="block text-sm text-gray-400 mb-3">
+                  M-Pesa Phone Number
+                </label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <span className="absolute left-12 top-1/2 -translate-y-1/2 text-gray-400 font-mono select-none">+254</span>
+                  <span className="absolute left-12 top-1/2 -translate-y-1/2 text-gray-400 font-mono select-none">
+                    +254
+                  </span>
                   <input
                     type="tel"
                     inputMode="numeric"
@@ -817,10 +856,19 @@ const Home: React.FC = () => {
               {cryptoAmount && (
                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">You {mode === 'buy' ? 'receive' : 'get'}</span>
+                    <span className="text-gray-400">
+                      You {mode === "buy" ? "receive" : "get"}
+                    </span>
                     <div className="flex items-center gap-2">
-                      <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-6 h-6" />
-                      <span className="text-2xl font-medium text-emerald-400">{cryptoAmount} {mode === 'buy' ? selectedTokenData.symbol : 'KES'}</span>
+                      <img
+                        src={selectedTokenData.icon}
+                        alt={selectedTokenData.symbol}
+                        className="w-6 h-6"
+                      />
+                      <span className="text-2xl font-medium text-emerald-400">
+                        {cryptoAmount}{" "}
+                        {mode === "buy" ? selectedTokenData.symbol : "KES"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -840,16 +888,24 @@ const Home: React.FC = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between text-gray-400">
                     <span>M-Pesa Transaction Fee</span>
-                    <span className="text-white">KES {getMpesaFee(parseFloat(amount || '0'))}</span>
+                    <span className="text-white">
+                      KES {getMpesaFee(parseFloat(amount || "0"))}
+                    </span>
                   </div>
                   <div className="flex justify-between text-gray-400">
                     <span>Service Fee</span>
-                    <span className="text-white">{SERVICE_FEE * 100}%</span>
+                    <span className="text-white">
+                      {SERVICE_FEE * 100}%
+                    </span>
                   </div>
                   <div className="pt-3 border-t border-zinc-800 flex justify-between">
                     <span className="text-gray-400">Total Fees</span>
                     <span className="text-white font-medium">
-                      KES {(getMpesaFee(parseFloat(amount || '0')) + parseFloat(amount || '0') * SERVICE_FEE).toFixed(2)}
+                      KES
+                      {(
+                        getMpesaFee(parseFloat(amount || "0")) +
+                        parseFloat(amount || "0") * SERVICE_FEE
+                      ).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -858,9 +914,12 @@ const Home: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-400 mb-1">Instant Delivery</h4>
+                    <h4 className="font-medium text-blue-400 mb-1">
+                      Instant Delivery
+                    </h4>
                     <p className="text-sm text-blue-300/80">
-                      Tokens are delivered to your wallet within 30 seconds of M-Pesa confirmation.
+                      Tokens are delivered to your wallet within 30 seconds of
+                      M-Pesa confirmation.
                     </p>
                   </div>
                 </div>
@@ -869,9 +928,12 @@ const Home: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <Shield className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-emerald-400 mb-1">Secure & Licensed</h4>
+                    <h4 className="font-medium text-emerald-400 mb-1">
+                      Secure & Licensed
+                    </h4>
                     <p className="text-sm text-emerald-300/80">
-                      Fully compliant with Kenyan regulations. Your funds are secure.
+                      Fully compliant with Kenyan regulations. Your funds are
+                      secure.
                     </p>
                   </div>
                 </div>
