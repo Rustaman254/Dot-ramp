@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -25,6 +26,7 @@ type Token = {
   icon: string;
   color: string;
 };
+
 type WalletMeta = {
   id: string;
   name: string;
@@ -32,6 +34,7 @@ type WalletMeta = {
   description: string;
   website: string;
 };
+
 type Account = {
   address: string;
   meta: { name?: string };
@@ -42,6 +45,13 @@ const tokens: Token[] = [
   { symbol: "USDT", name: "Tether USD", icon: "https://cryptologos.cc/logos/tether-usdt-logo.png", color: "#26A17B" },
   { symbol: "USDC", name: "USD Coin", icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", color: "#2775CA" },
   { symbol: "DAI", name: "Dai", icon: "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png", color: "#F5AC37" },
+];
+
+const walletProvidersMeta: WalletMeta[] = [
+  { id: "talisman", name: "Talisman", icon: "🔮", description: "A wallet for Polkadot & Ethereum", website: "https://talisman.xyz/" },
+  { id: "polkadot-js", name: "Polkadot{.js}", icon: "⬤", description: "Browser extension for Polkadot", website: "https://polkadot.js.org/extension/" },
+  { id: "subwallet-js", name: "SubWallet", icon: "◆", description: "Multi-chain wallet for Polkadot", website: "https://subwallet.app/" },
+  { id: "nova", name: "Nova Wallet", icon: "⭐", description: "Next-gen wallet for Polkadot", website: "https://novawallet.io/" }
 ];
 
 const getMpesaFee = (amount: number) => {
@@ -60,17 +70,8 @@ const getMpesaFee = (amount: number) => {
 };
 
 const SERVICE_FEE = 0.02;
-
-const walletProvidersMeta: WalletMeta[] = [
-  { id: "talisman", name: "Talisman", icon: "🔮", description: "A wallet for Polkadot & Ethereum", website: "https://talisman.xyz/" },
-  { id: "polkadot-js", name: "Polkadot{.js}", icon: "⬤", description: "Browser extension for Polkadot", website: "https://polkadot.js.org/extension/" },
-  { id: "subwallet-js", name: "SubWallet", icon: "◆", description: "Multi-chain wallet for Polkadot", website: "https://subwallet.app/" },
-  { id: "nova", name: "Nova Wallet", icon: "⭐", description: "Next-gen wallet for Polkadot", website: "https://novawallet.io/" },
-];
-
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
 const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
-console.log(PROD_URL)
 
 const Home: React.FC = () => {
   const router = useRouter();
@@ -79,9 +80,7 @@ const Home: React.FC = () => {
   const [amount, setAmount] = useState<string>("");
   const [phoneInput, setPhoneInput] = useState<string>("");
   const [cryptoAmount, setCryptoAmount] = useState<string>("");
-  const [step, setStep] = useState<
-    "input" | "confirm" | "processing" | "success" | "failed" | "cancelled"
-  >("input");
+  const [step, setStep] = useState<"input" | "confirm" | "processing" | "success" | "failed" | "cancelled">("input");
   const [txId, setTxId] = useState<string>("");
   const [merchantRequestId, setMerchantRequestId] = useState<string>("");
   const [walletConnected, setWalletConnected] = useState<boolean>(false);
@@ -166,12 +165,12 @@ const Home: React.FC = () => {
     const { web3Enable } = await import("@polkadot/extension-dapp");
     const enabled = await web3Enable("DotRamp");
     const extensionNames = enabled.map((e) => e.name.toLowerCase());
-    const installedWallets = walletProvidersMeta.filter(
+    const detectedWallets = walletProvidersMeta.filter(
       (wallet) =>
         extensionNames.includes(wallet.id) ||
         extensionNames.includes(wallet.name.toLowerCase())
     );
-    setAvailableWallets(installedWallets);
+    setAvailableWallets(detectedWallets);
     setShowWalletSelector(true);
     setAccounts([]);
     setSelectedWalletInfo(null);
@@ -275,14 +274,7 @@ const Home: React.FC = () => {
   }, [amount, selectedToken, mode, liveRatesKES]);
 
   const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const kenyanPhoneRegex =
-      /^(?:254|\+254|0)?(7(?:(?:[01249][0-9])|(?:5[789])|(?:6[89]))[0-9]{6})$/;
-    if (kenyanPhoneRegex.test(value)) {
-      setPhoneInput(value);
-    } else {
-      setPhoneInput(value);
-    }
+    setPhoneInput(e.target.value);
   };
 
   const getMsisdn = () => {

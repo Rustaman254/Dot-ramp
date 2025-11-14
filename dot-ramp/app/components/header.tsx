@@ -24,14 +24,20 @@ const Header: React.FC<{
     <div className="border-b border-zinc-800">
       <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-medium">DotRamp</h1>
+          <a href="/">
+            <img
+              src="/dot-ramp-2.png" 
+              alt="DotRamp Logo"
+              className="h-8 w-auto"
+            />
+          </a>
         </div>
         <div className="flex-1">
           {walletConnected && (
             <div className="flex justify-center items-center gap-4">
               <button
                 onClick={onShowTransactions}
-                className="font-medium px-4 py-3 rounded-xl transition-colors text-gray-400 hover:text-emerald-400 focus:outline-none"
+                className="font-medium px-4 py-3 cursor-pointer rounded-xl transition-colors text-gray-400 hover:text-emerald-400 focus:outline-none"
                 style={{ background: "none", border: "none" }}
               >
                 Transactions
