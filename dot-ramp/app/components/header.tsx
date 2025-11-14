@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
 
 const Header: React.FC<{
@@ -24,13 +25,13 @@ const Header: React.FC<{
     <div className="border-b border-zinc-800">
       <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-2">
         <div>
-          <a href="/">
+          <Link href="/">
             <img
               src="/dot-ramp-2.png" 
               alt="DotRamp Logo"
               className="h-8 w-auto"
             />
-          </a>
+          </Link>
         </div>
         <div className="flex-1">
           {walletConnected && (
