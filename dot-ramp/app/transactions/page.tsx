@@ -5,45 +5,39 @@ import Header from "@/app/components/header";
 import { Wallet, Clock, X, ExternalLink, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-// Dummy transaction interface
 type Transaction = {
   id: string;
   token: string;
-  amountFiat: number;
   amountToken: number;
   tokenIcon: string;
-  status: "pending" | "success" | "failed";
-  direction: "buy" | "sell";
+  status: "completed" | "timeout";
+  direction: "buy";
   hash: string;
   date: string;
-};
-
-const tokenLookup: Record<string, { icon: string; color: string }> = {
-  DOT: { icon: "https://cryptologos.cc/logos/polkadot-new-dot-logo.png", color: "#E6007A" },
-  USDT: { icon: "https://cryptologos.cc/logos/tether-usdt-logo.png", color: "#26A17B" },
-  USDC: { icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", color: "#2775CA" },
-  DAI: { icon: "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png", color: "#F5AC37" },
+  detailStatus: string;
 };
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-// Replace with your real integration link if needed
 const INTEGRATION_LINK = "/dev-docs";
 
+const tokenLookup: Record<string, { icon: string; color: string }> = {
+  PAS: { icon: "https://cryptologos.cc/logos/polkadot-new-dot-logo.png", color: "#E6007A" },
+  USDT: { icon: "https://cryptologos.cc/logos/tether-usdt-logo.png", color: "#26A17B" },
+  USDC: { icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", color: "#2775CA" },
+};
+
 const explorerUrl = (hash: string) =>
-  `https://polkadot.subscan.io/extrinsic/${hash}`;
+  `https://assethub-paseo.subscan.io/block/${hash}`;
+
+const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
 
 const Transactions: React.FC = () => {
   const router = useRouter();
-
-  // Wallet state (copied from Home page logic)
   const [walletConnected, setWalletConnected] = useState<boolean>(false);
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [username, setUsername] = useState<string>("");
-
-  // Dummy popup logic (implement as needed)
   const [showWalletPopup, setShowWalletPopup] = useState<boolean>(false);
 
-  // On mount, sync wallet state from local storage
   useEffect(() => {
     const walletJson = typeof window !== "undefined" && localStorage.getItem(LOCAL_STORAGE_KEY);
     if (walletJson) {
@@ -58,21 +52,17 @@ const Transactions: React.FC = () => {
     }
   }, []);
 
-  const handleOpenWalletSelector = () => {
-    // Trigger wallet connect popup, logic same as on Home
-    // You can show your wallet selector modal here
-  };
+  const handleOpenWalletSelector = () => {};
 
   const formatAddress = (addr: string): string =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-  // Transaction data and states
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!walletConnected) {
+    if (!walletConnected || !walletAddress) {
       setLoading(false);
       setTransactions([]);
       setError(null);
@@ -82,39 +72,39 @@ const Transactions: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        await new Promise((res) => setTimeout(res, 900));
-        setTransactions([
-          {
-            id: "1",
-            token: "DOT",
-            amountFiat: 5000,
-            amountToken: 7.124,
-            tokenIcon: tokenLookup["DOT"].icon,
-            status: "success",
-            direction: "buy",
-            hash: "0x3bfa38fa3d96edda02cee738962c6a2994099976b5a7eb3e60c6b8326ba5f09f",
-            date: "2025-11-12T12:15:22Z"
-          },
-          {
-            id: "2",
-            token: "USDC",
-            amountFiat: 10000,
-            amountToken: 62.11,
-            tokenIcon: tokenLookup["USDC"].icon,
-            status: "pending",
-            direction: "sell",
-            hash: "0xfc9b2f8f7a686cc712e751007d01f2df96416b159f7a51495537a12335ad291c",
-            date: "2025-11-10T14:08:59Z"
-          }
-        ]);
-      } catch (e) {
+        const res = await fetch(`${PROD_URL}/api/v1/transactions/history?address=${walletAddress}`);
+        if (!res.ok) {
+          throw new Error("Failed to load transactions");
+        }
+        const data = await res.json();
+        if (!data || !Array.isArray(data.transactions)) {
+          setTransactions([]);
+          setError("No transactions found");
+          return;
+        }
+        setTransactions(
+          data.transactions
+            .map((tx: any) => ({
+              id: tx.merchantRequestId,
+              token: tx.token,
+              amountToken: Number(tx.cryptoAmount),
+              tokenIcon: tokenLookup[tx.token]?.icon || "",
+              status: tx.status,
+              direction: "buy",
+              hash: tx.details.blockHash || "",
+              date: tx.timestamp,
+              detailStatus: tx.details.ResultDesc || tx.details.ResponseDescription || "",
+            }))
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        );
+      } catch (e: any) {
         setError("Could not load transactions");
       } finally {
         setLoading(false);
       }
     }
     fetchTx();
-  }, [walletConnected]);
+  }, [walletConnected, walletAddress]);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -131,8 +121,6 @@ const Transactions: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="rounded-2xl p-6">
           <h2 className="text-xl font-medium mb-6">Your Transactions</h2>
-
-          {/* Wallet not connected state */}
           {!walletConnected ? (
             <div className="flex items-center gap-3 text-gray-500 py-12 flex-col">
               <Wallet className="w-8 h-8 mx-auto mb-4" />
@@ -142,6 +130,14 @@ const Transactions: React.FC = () => {
             </div>
           ) : (
             <>
+              <div className="mb-6 flex justify-end">
+                <button
+                  onClick={() => router.push("/")}
+                  className="bg-emerald-500 cursor pointer hover:bg-emerald-600 text-black font-medium px-6 py-2 rounded-xl transition-colors inline-flex items-center gap-2"
+                >
+                  Make Another Transaction
+                </button>
+              </div>
               {loading ? (
                 <div className="flex items-center gap-3 text-blue-400">
                   <Clock className="w-5 h-5 animate-spin" /> Loading...
@@ -164,7 +160,6 @@ const Transactions: React.FC = () => {
                       key={tx.id}
                       className="py-6 flex flex-col md:flex-row md:items-stretch gap-6 md:gap-0 group"
                     >
-                      {/* DETAILS LEFT */}
                       <div className="flex items-center gap-3 flex-1">
                         <img
                           src={tx.tokenIcon}
@@ -178,41 +173,36 @@ const Transactions: React.FC = () => {
                           <div className="text-gray-400 text-xs">
                             {new Date(tx.date).toLocaleString()}
                           </div>
+                          <div className="text-xs text-gray-400">{tx.detailStatus}</div>
                         </div>
                       </div>
-                      {/* AMOUNTS */}
                       <div className="md:w-1/3 flex flex-row md:flex-col justify-between md:items-end gap-4 font-mono text-sm mt-2 md:mt-0">
-                        <div>
-                          <span className="text-gray-400">KES</span>{" "}
-                          <span className="text-white">{tx.amountFiat.toLocaleString()}</span>
-                        </div>
                         <div>
                           <span className="text-gray-400">{tx.token}</span>{" "}
                           <span className="text-white">{tx.amountToken}</span>
                         </div>
                       </div>
-                      {/* VERTICAL DIVIDER ONLY ON DESKTOP */}
                       <div className="hidden md:flex w-px bg-zinc-800 mx-8" />
-                      {/* HASH & STATUS */}
                       <div className="md:w-1/3 flex flex-col items-start md:items-end gap-2 mt-3 md:mt-0">
-                        <a
-                          href={explorerUrl(tx.hash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-mono break-all"
-                        >
-                          {tx.hash.slice(0, 10)}...{tx.hash.slice(-6)}
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
+                        {tx.hash ? (
+                          <a
+                            href={explorerUrl(tx.hash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-mono break-all"
+                          >
+                            {tx.hash.slice(0, 10)}...{tx.hash.slice(-6)}
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No chain transaction</span>
+                        )}
                         <span className="text-xs">
-                          {tx.status === "success" && (
-                            <span className="text-emerald-500">Success</span>
+                          {tx.status === "completed" && (
+                            <span className="text-emerald-500">Completed</span>
                           )}
-                          {tx.status === "pending" && (
-                            <span className="text-amber-400">Pending</span>
-                          )}
-                          {tx.status === "failed" && (
-                            <span className="text-red-500">Failed</span>
+                          {tx.status === "timeout" && (
+                            <span className="text-amber-400">Timeout</span>
                           )}
                         </span>
                       </div>

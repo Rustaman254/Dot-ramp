@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -23,8 +22,12 @@ import Header from "@/app/components/header";
 type Token = {
   symbol: string;
   name: string;
-  icon: string;
-  color: string;
+  decimals?: number;
+  assetId?: number | null;
+  chain?: string;
+  exchangeRate?: number;
+  icon?: string;
+  color?: string;
 };
 
 type WalletMeta = {
@@ -39,13 +42,6 @@ type Account = {
   address: string;
   meta: { name?: string };
 };
-
-const tokens: Token[] = [
-  { symbol: "DOT", name: "Polkadot", icon: "https://cryptologos.cc/logos/polkadot-new-dot-logo.png", color: "#E6007A" },
-  { symbol: "USDT", name: "Tether USD", icon: "https://cryptologos.cc/logos/tether-usdt-logo.png", color: "#26A17B" },
-  { symbol: "USDC", name: "USD Coin", icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", color: "#2775CA" },
-  { symbol: "DAI", name: "Dai", icon: "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png", color: "#F5AC37" },
-];
 
 const walletProvidersMeta: WalletMeta[] = [
   { id: "talisman", name: "Talisman", icon: "🔮", description: "A wallet for Polkadot & Ethereum", website: "https://talisman.xyz/" },
@@ -73,10 +69,29 @@ const SERVICE_FEE = 0.02;
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
 const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
 
+const rateMap: Record<string, string> = {
+  PAS: "polkadot",
+  USDT: "tether",
+  USDC: "usd-coin",
+};
+
+const iconMap: Record<string, string> = {
+  PAS: "https://cryptologos.cc/logos/polkadot-new-dot-logo.png",
+  USDT: "https://cryptologos.cc/logos/tether-usdt-logo.png",
+  USDC: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
+};
+
+const colorMap: Record<string, string> = {
+  PAS: "#E6007A",
+  USDT: "#26A17B",
+  USDC: "#2775CA",
+};
+
 const Home: React.FC = () => {
   const router = useRouter();
   const [mode, setMode] = useState<"buy" | "sell">("buy");
-  const [selectedToken, setSelectedToken] = useState<string>("DOT");
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [selectedToken, setSelectedToken] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
   const [phoneInput, setPhoneInput] = useState<string>("");
   const [cryptoAmount, setCryptoAmount] = useState<string>("");
@@ -92,12 +107,7 @@ const Home: React.FC = () => {
   const [availableWallets, setAvailableWallets] = useState<WalletMeta[]>([]);
   const [selectedWalletInfo, setSelectedWalletInfo] = useState<WalletMeta | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [liveRatesKES, setLiveRatesKES] = useState<{ [symbol: string]: number }>({
-    DOT: 0,
-    USDT: 0,
-    USDC: 0,
-    DAI: 0,
-  });
+  const [liveRatesKES, setLiveRatesKES] = useState<{ [symbol: string]: number }>({});
 
   useEffect(() => {
     const walletJson = typeof window !== "undefined" && localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -114,20 +124,32 @@ const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    async function fetchRates() {
-      const response = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=polkadot,tether,usd-coin,dai&vs_currencies=kes"
-      );
-      const data = await response.json();
-      setLiveRatesKES({
-        DOT: data.polkadot?.kes || 0,
-        USDT: data.tether?.kes || 0,
-        USDC: data["usd-coin"]?.kes || 0,
-        DAI: data.dai?.kes || 0,
+    fetch(`${PROD_URL}/api/v1/tokens`)
+      .then(res => res.json())
+      .then(data => {
+        const tokensWithIcons = (data.tokens || []).map((token: Token) => ({
+          ...token,
+          icon: iconMap[token.symbol] || "",
+          color: colorMap[token.symbol] || "#aaa",
+        }));
+        setTokens(tokensWithIcons);
+        if (tokensWithIcons.length > 0 && !selectedToken) setSelectedToken(tokensWithIcons[0].symbol);
       });
-    }
-    fetchRates();
   }, []);
+
+  useEffect(() => {
+    if (!selectedToken) return;
+    const cgId = rateMap[selectedToken];
+    if (!cgId) return;
+    fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=kes`)
+      .then(res => res.json())
+      .then(data => {
+        setLiveRatesKES((prev) => ({
+          ...prev,
+          [selectedToken]: data[cgId]?.kes || 0,
+        }));
+      });
+  }, [selectedToken]);
 
   useEffect(() => {
     if (
@@ -141,23 +163,11 @@ const Home: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          address: walletAddress,
+          userAddress: walletAddress,
           amount: cryptoAmount,
           token: selectedToken,
         }),
-      })
-        .then(async (res) => {
-          if (!res.ok) {
-            const err = await res.json();
-            console.error("Payout failed:", err.error || err);
-          } else {
-            const response = await res.json();
-            console.log("Payout success:", response);
-          }
-        })
-        .catch((e) => {
-          console.error("Payout error:", e);
-        });
+      });
     }
   }, [step, walletConnected, walletAddress, cryptoAmount, selectedToken, mode]);
 
@@ -253,8 +263,8 @@ const Home: React.FC = () => {
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   useEffect(() => {
-    if (amount && !isNaN(Number(amount)) && liveRatesKES[selectedToken]) {
-      const tokenKES = liveRatesKES[selectedToken];
+    const tokenKES = selectedToken ? liveRatesKES[selectedToken] : 0;
+    if (amount && !isNaN(Number(amount)) && tokenKES) {
       const amountNum = parseFloat(amount);
       const mpesaFee = getMpesaFee(amountNum);
       if (mode === "buy") {
@@ -293,7 +303,7 @@ const Home: React.FC = () => {
       const pollStatus = async () => {
         try {
           const statusRes = await fetch(
-            `${PROD_URL}/api/v1/mpesa/status?merchantRequestId=${merchantRequestId}`
+            `${PROD_URL}/api/v1/status?merchantRequestId=${merchantRequestId}`
           );
           if (statusRes.status === 429) return;
           if (statusRes.status === 404) return;
@@ -337,16 +347,37 @@ const Home: React.FC = () => {
       setStep("processing");
       if (mode === "buy") {
         const msisdn = getMsisdn();
-        if (!msisdn) {
+        if (!msisdn || !walletAddress) {
           setStep("failed");
           return;
         }
-        const response = await fetch(`${PROD_URL}/api/v1/mpesa/stk-push`, {
+        const response = await fetch(`${PROD_URL}/api/v1/buy`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: amount,
             phone: msisdn,
+            token: selectedToken,
+            userAddress: walletAddress,
+          }),
+        });
+        const data = await response.json();
+        if (data.MerchantRequestID) {
+          setMerchantRequestId(data.MerchantRequestID);
+        }
+      } else {
+        if (!walletAddress) {
+          setStep("failed");
+          return;
+        }
+        const response = await fetch(`${PROD_URL}/api/v1/sell`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: amount,
+            phone: getMsisdn(),
+            token: selectedToken,
+            fromAddress: walletAddress,
           }),
         });
         const data = await response.json();
@@ -359,7 +390,9 @@ const Home: React.FC = () => {
   };
 
   const selectedTokenData =
-    tokens.find((t) => t.symbol === selectedToken) ?? tokens[0];
+    Array.isArray(tokens) && tokens.length > 0
+      ? tokens.find((t) => t.symbol === selectedToken) ?? tokens[0]
+      : undefined;
 
   if (showWalletSelector) {
     return (
@@ -525,8 +558,8 @@ const Home: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-400">You {mode === "buy" ? "received" : "sent"}</span>
               <div className="flex items-center gap-2">
-                <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-5 h-5" />
-                <span className="text-xl font-medium">{mode === "buy" ? cryptoAmount : amount} {selectedTokenData.symbol}</span>
+                {selectedTokenData && <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-5 h-5" />}
+                <span className="text-xl font-medium">{mode === "buy" ? cryptoAmount : amount} {selectedTokenData?.symbol}</span>
               </div>
             </div>
             <div className="pt-4 border-t border-zinc-800">
@@ -686,9 +719,11 @@ const Home: React.FC = () => {
               <div className="pt-4 border-t border-zinc-800 flex justify-between items-center">
                 <span className="text-gray-400">You {mode === "buy" ? "receive" : "get"}</span>
                 <div className="flex items-center gap-2">
-                  <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-6 h-6" />
+                  {selectedTokenData && (
+                    <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="w-6 h-6" />
+                  )}
                   <span className="text-xl font-medium text-emerald-400">
-                    {cryptoAmount} {mode === "buy" ? selectedTokenData.symbol : "KES"}
+                    {cryptoAmount} {mode === "buy" ? selectedTokenData?.symbol : "KES"}
                   </span>
                 </div>
               </div>
@@ -707,7 +742,7 @@ const Home: React.FC = () => {
           </div>
           <button
             onClick={handleContinue}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
+            className="w-full cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
           >
             Confirm & Pay
           </button>
@@ -779,7 +814,7 @@ const Home: React.FC = () => {
                     onChange={handleTokenChange}
                     className="w-full cursor-pointer bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 pl-14 pr-10 appearance-none text-white font-medium focus:outline-none focus:border-emerald-500"
                   >
-                    {tokens.map((token) => (
+                    {Array.isArray(tokens) && tokens.map((token) => (
                       <option
                         className="cursor-pointer"
                         key={token.symbol}
@@ -790,11 +825,13 @@ const Home: React.FC = () => {
                     ))}
                   </select>
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <img
-                      src={selectedTokenData.icon}
-                      alt={selectedTokenData.symbol}
-                      className="w-6 h-6"
-                    />
+                    {selectedTokenData && (
+                      <img
+                        src={selectedTokenData.icon}
+                        alt={selectedTokenData.symbol}
+                        className="w-6 h-6"
+                      />
+                    )}
                   </div>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 </div>
@@ -802,7 +839,7 @@ const Home: React.FC = () => {
                   Current price:{" "}
                   <span className="text-emerald-400 font-bold">
                     KES{" "}
-                    {liveRatesKES[selectedToken]
+                    {selectedToken && liveRatesKES[selectedToken]
                       ? liveRatesKES[selectedToken].toFixed(2)
                       : "Loading..."}
                   </span>
@@ -821,7 +858,7 @@ const Home: React.FC = () => {
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 text-2xl font-medium focus:outline-none focus:border-emerald-500"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    {mode === "buy" ? "KES" : selectedTokenData.symbol}
+                    {mode === "buy" ? "KES" : selectedTokenData?.symbol}
                   </span>
                 </div>
               </div>
@@ -852,14 +889,16 @@ const Home: React.FC = () => {
                       You {mode === "buy" ? "receive" : "get"}
                     </span>
                     <div className="flex items-center gap-2">
-                      <img
-                        src={selectedTokenData.icon}
-                        alt={selectedTokenData.symbol}
-                        className="w-6 h-6"
-                      />
+                      {selectedTokenData && (
+                        <img
+                          src={selectedTokenData.icon}
+                          alt={selectedTokenData.symbol}
+                          className="w-6 h-6"
+                        />
+                      )}
                       <span className="text-2xl font-medium text-emerald-400">
                         {cryptoAmount}{" "}
-                        {mode === "buy" ? selectedTokenData.symbol : "KES"}
+                        {mode === "buy" ? selectedTokenData?.symbol : "KES"}
                       </span>
                     </div>
                   </div>
@@ -867,8 +906,8 @@ const Home: React.FC = () => {
               )}
               <button
                 onClick={handleContinue}
-                disabled={!amount || !phoneInput}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                disabled={!amount || !phoneInput || !selectedToken}
+                className="w-full bg-emerald-500 cursor-pointer hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 Continue
                 <ArrowRight className="w-5 h-5" />
