@@ -4,18 +4,22 @@ import React, { useEffect, useState } from "react";
 import Header from "@/app/components/header";
 import { Wallet, Clock, X, ExternalLink, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
-type Transaction = {
+type TransactionStatus = "completed" | "timeout";
+type TransactionDirection = "buy";
+
+interface Transaction {
   id: string;
   token: string;
   amountToken: number;
   tokenIcon: string;
-  status: "completed" | "timeout";
-  direction: "buy";
+  status: TransactionStatus;
+  direction: TransactionDirection;
   hash: string;
   date: string;
   detailStatus: string;
-};
+}
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
 const INTEGRATION_LINK = "/dev-docs";
@@ -23,20 +27,23 @@ const INTEGRATION_LINK = "/dev-docs";
 const tokenLookup: Record<string, { icon: string; color: string }> = {
   PAS: { icon: "https://cryptologos.cc/logos/polkadot-new-dot-logo.png", color: "#E6007A" },
   USDT: { icon: "https://cryptologos.cc/logos/tether-usdt-logo.png", color: "#26A17B" },
-  USDC: { icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", color: "#2775CA" },
+  USDC: { icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", color: "#2775CA" }
 };
 
 const explorerUrl = (hash: string) =>
   `https://assethub-paseo.subscan.io/block/${hash}`;
 
-const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
+const PROD_URL = "http://localhost:8000";
 
 const Transactions: React.FC = () => {
   const router = useRouter();
-  const [walletConnected, setWalletConnected] = useState<boolean>(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
-  const [username, setUsername] = useState<string>("");
-  const [showWalletPopup, setShowWalletPopup] = useState<boolean>(false);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [username, setUsername] = useState("");
+  // showWalletPopup is not used, so we remove it.
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const walletJson = typeof window !== "undefined" && localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -56,10 +63,6 @@ const Transactions: React.FC = () => {
 
   const formatAddress = (addr: string): string =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!walletConnected || !walletAddress) {
@@ -89,15 +92,15 @@ const Transactions: React.FC = () => {
               token: tx.token,
               amountToken: Number(tx.cryptoAmount),
               tokenIcon: tokenLookup[tx.token]?.icon || "",
-              status: tx.status,
-              direction: "buy",
+              status: tx.status as TransactionStatus,
+              direction: "buy" as TransactionDirection,
               hash: tx.details.blockHash || "",
               date: tx.timestamp,
               detailStatus: tx.details.ResultDesc || tx.details.ResponseDescription || "",
             }))
-            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .sort((a: Transaction, b: Transaction) => new Date(b.date).getTime() - new Date(a.date).getTime())
         );
-      } catch (e: any) {
+      } catch {
         setError("Could not load transactions");
       } finally {
         setLoading(false);
@@ -113,7 +116,7 @@ const Transactions: React.FC = () => {
         username={username}
         walletAddress={walletAddress}
         formatAddress={formatAddress}
-        onShowWalletPopup={() => setShowWalletPopup(true)}
+        onShowWalletPopup={() => {}}
         onConnectWallet={handleOpenWalletSelector}
         onShowTransactions={() => router.push("/transactions")}
         integrationLink={INTEGRATION_LINK}
@@ -133,7 +136,7 @@ const Transactions: React.FC = () => {
               <div className="mb-6 flex justify-end">
                 <button
                   onClick={() => router.push("/")}
-                  className="bg-emerald-500 cursor pointer hover:bg-emerald-600 text-black font-medium px-6 py-2 rounded-xl transition-colors inline-flex items-center gap-2"
+                  className="bg-emerald-500 cursor-pointer hover:bg-emerald-600 text-black font-medium px-6 py-2 rounded-xl transition-colors inline-flex items-center gap-2"
                 >
                   Make Another Transaction
                 </button>
@@ -161,11 +164,15 @@ const Transactions: React.FC = () => {
                       className="py-6 flex flex-col md:flex-row md:items-stretch gap-6 md:gap-0 group"
                     >
                       <div className="flex items-center gap-3 flex-1">
-                        <img
-                          src={tx.tokenIcon}
-                          alt={tx.token}
-                          className="w-10 h-10 rounded-full border border-zinc-700"
-                        />
+                        <span className="relative w-10 h-10 block overflow-hidden">
+                          <img
+                            src={tx.tokenIcon}
+                            alt={tx.token}
+                            width={40}
+                            height={40}
+                            className="object-contain w-10 h-10"
+                          />
+                        </span>
                         <div>
                           <div className="font-bold text-white">
                             {tx.direction === "buy" ? "Bought" : "Sold"} {tx.token}

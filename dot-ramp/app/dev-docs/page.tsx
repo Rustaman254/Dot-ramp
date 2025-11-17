@@ -4,6 +4,7 @@ import React from "react";
 import { Wallet, BookOpen, ExternalLink, Link as LinkIcon, Hammer, CheckCircle2, AlertCircle } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { darcula } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import Link from "next/link";
 
 const apiBase = "https://dotramp.com/api/v1";
 
@@ -70,9 +71,9 @@ const DeveloperDocs: React.FC = () => (
             <Wallet className="w-7 h-7 text-emerald-400" /> DotRamp Developer Hub
           </h1>
         </div>
-        <a href="/" className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-400/10 rounded-xl px-4 py-3 font-medium text-emerald-300 hover:bg-emerald-700/10 hover:text-white transition-colors">
+        <Link href="/" className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-400/10 rounded-xl px-4 py-3 font-medium text-emerald-300 hover:bg-emerald-700/10 hover:text-white transition-colors">
           <ExternalLink className="w-5 h-5" /> Back to DotRamp
-        </a>
+        </Link>
       </div>
     </div>
 
@@ -127,14 +128,14 @@ const DeveloperDocs: React.FC = () => (
           <SectionTitle id="install" icon={<Hammer className="w-5 h-5 text-emerald-400" />}>Installation & Setup</SectionTitle>
           <p className="mb-4 text-gray-300">To install and prepare your DotRamp node:</p>
           <SyntaxHighlighter language="bash" style={darcula} customStyle={codeStyle}>
-{`git clone https://github.com/yourusername/dotramp.git
+            {`git clone https://github.com/yourusername/dotramp.git
 cd dotramp
 npm install
 cp .env.example .env`}
           </SyntaxHighlighter>
           <p className="mb-2 mt-4">Edit your <b>.env</b> file with your MPESA and wallet credentials:</p>
           <SyntaxHighlighter language="bash" style={darcula} customStyle={codeStyle}>
-{`# Server
+            {`# Server
 PORT=3000
 NODE_ENV=development
 
@@ -162,16 +163,16 @@ MPESA_SECURITY_CREDENTIAL=your_security_credential`}
           <SectionTitle id="run">Running the Application</SectionTitle>
           <p className="mb-4 text-gray-300">Development:</p>
           <SyntaxHighlighter language="bash" style={darcula} customStyle={codeStyle}>
-{`npm run dev`}
+            {`npm run dev`}
           </SyntaxHighlighter>
           <p className="mb-4 mt-4 text-gray-300">Production:</p>
           <SyntaxHighlighter language="bash" style={darcula} customStyle={codeStyle}>
-{`npm run build
+            {`npm run build
 npm start`}
           </SyntaxHighlighter>
           <p className="mt-4 text-gray-300">For MPESA callbacks in local dev, use ngrok:</p>
           <SyntaxHighlighter language="bash" style={darcula} customStyle={codeStyle}>
-{`ngrok http 3000 # then paste url into .env`}
+            {`ngrok http 3000 # then paste url into .env`}
           </SyntaxHighlighter>
         </section>
 
@@ -207,7 +208,7 @@ npm start`}
           <SectionTitle id="testing">Testing</SectionTitle>
           <p className="mb-2 text-gray-300">Test the buy, sell, and status flows with curl:</p>
           <SyntaxHighlighter language="bash" style={darcula} customStyle={codeStyle}>
-{`curl -X POST http://localhost:3000/api/v1/buy \\
+            {`curl -X POST http://localhost:3000/api/v1/buy \\
   -H "Content-Type: application/json" \\
   -d '{
     "phone": "254712345678",
@@ -243,7 +244,7 @@ curl -X POST http://localhost:3000/api/v1/sell -H "Content-Type: application/jso
             Project Structure
           </SectionTitle>
           <SyntaxHighlighter language="bash" style={darcula} customStyle={codeStyle}>
-{`dotramp/
+            {`dotramp/
 ├── src/
 │   ├── controllers/
 │   ├── routes/

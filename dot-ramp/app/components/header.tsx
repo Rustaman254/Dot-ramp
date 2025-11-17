@@ -43,14 +43,14 @@ const Header: React.FC<{
               >
                 Transactions
               </button>
-              <a
+              <Link
                 href={integrationLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium px-4 py-3 rounded-xl transition-colors text-gray-400 hover:text-emerald-400 focus:outline-none"
               >
                 Integrate API
-              </a>
+              </Link>
             </div>
           )}
         </div>

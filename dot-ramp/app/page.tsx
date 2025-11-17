@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -15,7 +16,7 @@ import {
   Wallet,
   X,
   Check,
-  ChevronRight,
+  ChevronRight
 } from "lucide-react";
 import Header from "@/app/components/header";
 
@@ -67,24 +68,21 @@ const getMpesaFee = (amount: number) => {
 
 const SERVICE_FEE = 0.02;
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
-
+const PROD_URL = "http://localhost:8000";
 const rateMap: Record<string, string> = {
   PAS: "polkadot",
   USDT: "tether",
-  USDC: "usd-coin",
+  USDC: "usd-coin"
 };
-
 const iconMap: Record<string, string> = {
   PAS: "https://cryptologos.cc/logos/polkadot-new-dot-logo.png",
   USDT: "https://cryptologos.cc/logos/tether-usdt-logo.png",
-  USDC: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
+  USDC: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png"
 };
-
 const colorMap: Record<string, string> = {
   PAS: "#E6007A",
   USDT: "#26A17B",
-  USDC: "#2775CA",
+  USDC: "#2775CA"
 };
 
 const Home: React.FC = () => {
@@ -130,7 +128,7 @@ const Home: React.FC = () => {
         const tokensWithIcons = (data.tokens || []).map((token: Token) => ({
           ...token,
           icon: iconMap[token.symbol] || "",
-          color: colorMap[token.symbol] || "#aaa",
+          color: colorMap[token.symbol] || "#aaa"
         }));
         setTokens(tokensWithIcons);
         if (tokensWithIcons.length > 0 && !selectedToken) setSelectedToken(tokensWithIcons[0].symbol);
@@ -146,7 +144,7 @@ const Home: React.FC = () => {
       .then(data => {
         setLiveRatesKES((prev) => ({
           ...prev,
-          [selectedToken]: data[cgId]?.kes || 0,
+          [selectedToken]: data[cgId]?.kes || 0
         }));
       });
   }, [selectedToken]);
@@ -163,10 +161,10 @@ const Home: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userAddress: walletAddress,
+          address: walletAddress,
           amount: cryptoAmount,
-          token: selectedToken,
-        }),
+          token: selectedToken
+        })
       });
     }
   }, [step, walletConnected, walletAddress, cryptoAmount, selectedToken, mode]);
@@ -209,7 +207,7 @@ const Home: React.FC = () => {
             JSON.stringify({
               walletId: selectedWalletInfo.id,
               address,
-              username: name,
+              username: name
             })
           );
         }
@@ -233,7 +231,7 @@ const Home: React.FC = () => {
           JSON.stringify({
             walletId: selectedWalletInfo.id,
             address,
-            username: name,
+            username: name
           })
         );
       }
@@ -308,10 +306,13 @@ const Home: React.FC = () => {
           if (statusRes.status === 429) return;
           if (statusRes.status === 404) return;
           const statusData = await statusRes.json();
-          if (statusData.status === "success") {
+          if (statusData.status === "success" || statusData.status === "completed") {
             setStep("success");
             if (pollInterval) clearInterval(pollInterval);
-          } else if (statusData.status === "cancelled") {
+          } else if (
+            statusData.status === "cancelled" ||
+            statusData.status === "timeout"
+          ) {
             setStep("cancelled");
             if (pollInterval) clearInterval(pollInterval);
           } else if (statusData.status === "failed") {
@@ -358,12 +359,14 @@ const Home: React.FC = () => {
             amount: amount,
             phone: msisdn,
             token: selectedToken,
-            userAddress: walletAddress,
-          }),
+            userAddress: walletAddress
+          })
         });
         const data = await response.json();
-        if (data.MerchantRequestID) {
-          setMerchantRequestId(data.MerchantRequestID);
+        if (data.MerchantRequestID || data.merchantRequestId) {
+          setMerchantRequestId(data.MerchantRequestID || data.merchantRequestId);
+        } else {
+          setStep("failed");
         }
       } else {
         if (!walletAddress) {
@@ -377,12 +380,14 @@ const Home: React.FC = () => {
             amount: amount,
             phone: getMsisdn(),
             token: selectedToken,
-            fromAddress: walletAddress,
-          }),
+            fromAddress: walletAddress
+          })
         });
         const data = await response.json();
-        if (data.MerchantRequestID) {
-          setMerchantRequestId(data.MerchantRequestID);
+        if (data.MerchantRequestID || data.merchantRequestId) {
+          setMerchantRequestId(data.MerchantRequestID || data.merchantRequestId);
+        } else {
+          setStep("failed");
         }
       }
       setTxId(`TX${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
@@ -395,121 +400,11 @@ const Home: React.FC = () => {
       : undefined;
 
   if (showWalletSelector) {
-    return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 relative">
-          <button onClick={() => { setShowWalletSelector(false); setAccounts([]); }} className="absolute top-4 right-4 text-gray-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-          <div className="mb-6">
-            <h2 className="text-2xl font-medium mb-2">Connect Wallet</h2>
-            <p className="text-gray-400 text-sm">Choose a wallet extension to connect to DotRamp</p>
-          </div>
-          {availableWallets.length > 0 && accounts.length === 0 ? (
-            <div className="space-y-3">
-              {availableWallets.map((wallet) => (
-                <button
-                  key={wallet.id}
-                  onClick={() => handleSelectWallet(wallet)}
-                  className="w-full bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 hover:border-emerald-500 rounded-xl p-4 transition-all text-left group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-2xl">{wallet.icon}</div>
-                    <div className="flex-1">
-                      <div className="font-medium text-white mb-0.5">{wallet.name}</div>
-                      <div className="text-sm text-gray-400">{wallet.description}</div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-400 transition-colors" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {accounts.length > 1 ? (
-            <div className="space-y-3 mt-2">
-              <p className="text-gray-400 mb-3">Select account to connect:</p>
-              {accounts.map((account) => (
-                <button
-                  key={account.address}
-                  onClick={() => handleSelectAccount(account)}
-                  className="w-full bg-zinc-900 hover:bg-emerald-500/20 border border-zinc-800 hover:border-emerald-500 rounded-xl p-4 transition-all text-left flex items-center"
-                >
-                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-800 font-mono text-xs text-white mr-3">{formatAddress(account.address)}</span>
-                  <span className="flex-1 font-medium text-white">{account.meta.name || 'Polkadot Account'}</span>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {availableWallets.length === 0 && accounts.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Wallet className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="font-medium text-white mb-2">No Wallets Detected</h3>
-              <p className="text-sm text-gray-400 mb-6">Install a Polkadot wallet extension to continue</p>
-              <div className="space-y-2">
-                {walletProvidersMeta.map((wallet) => (
-                  <a
-                    key={wallet.id}
-                    href={wallet.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-xl p-3 transition-colors text-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{wallet.icon}</span>
-                      <span className="text-white">{wallet.name}</span>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-gray-400" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
+    return <div></div>;
   }
 
   if (showWalletPopup) {
-    return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 relative">
-          <button onClick={() => setShowWalletPopup(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-black">
-              {username.slice(0, 2).toUpperCase()}
-            </div>
-            <h3 className="text-xl font-medium text-white mb-1">{username}</h3>
-            <p className="text-sm text-gray-400">Connected with {selectedWalletInfo?.name}</p>
-          </div>
-          <div className="bg-black border border-zinc-800 rounded-xl p-4 mb-4">
-            <label className="text-xs text-gray-400 block mb-2">WALLET ADDRESS</label>
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-mono text-sm text-white break-all">{walletAddress}</span>
-              <button onClick={copyAddress} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors flex-shrink-0">
-                {copiedAddress ? (<Check className="w-4 h-4 text-emerald-400" />) : (<Copy className="w-4 h-4 text-gray-400" />)}
-              </button>
-            </div>
-          </div>
-          <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-zinc-900 rounded-lg flex items-center justify-center text-xl">{selectedWalletInfo?.icon}</div>
-              <div>
-                <div className="text-sm font-medium text-white">{selectedWalletInfo?.name}</div>
-                <div className="text-xs text-gray-400">Connected Wallet</div>
-              </div>
-            </div>
-          </div>
-          <button onClick={handleDisconnect} className="w-full cursor-pointer cursor-pointer bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 py-3 rounded-xl transition-colors font-medium">
-            Disconnect Wallet
-          </button>
-        </div>
-      </div>
-    );
+    return <div></div>;
   }
 
   if (step === "processing") {
@@ -562,15 +457,6 @@ const Home: React.FC = () => {
                 <span className="text-xl font-medium">{mode === "buy" ? cryptoAmount : amount} {selectedTokenData?.symbol}</span>
               </div>
             </div>
-            <div className="pt-4 border-t border-zinc-800">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Transaction ID</span>
-                <button className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300">
-                  <span className="font-mono">{txId}</span>
-                  <Copy className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
           </div>
           <button
             onClick={() => {
@@ -584,15 +470,6 @@ const Home: React.FC = () => {
           >
             Make Another Transaction
           </button>
-          <a
-            href={`https://polkadot.js.org/apps/#/explorer/query/${walletAddress}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full mt-3 text-gray-400 hover:text-white py-3 transition-colors flex items-center cursor-pointer justify-center gap-2"
-          >
-            View on Explorer
-            <ExternalLink className="w-4 h-4" />
-          </a>
         </div>
       </div>
     );
@@ -742,7 +619,7 @@ const Home: React.FC = () => {
           </div>
           <button
             onClick={handleContinue}
-            className="w-full cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
           >
             Confirm & Pay
           </button>
@@ -907,7 +784,7 @@ const Home: React.FC = () => {
               <button
                 onClick={handleContinue}
                 disabled={!amount || !phoneInput || !selectedToken}
-                className="w-full bg-emerald-500 cursor-pointer hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-gray-500 text-black font-medium py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 Continue
                 <ArrowRight className="w-5 h-5" />
@@ -978,3 +855,5 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+
+
