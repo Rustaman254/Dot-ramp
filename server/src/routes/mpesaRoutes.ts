@@ -18,7 +18,7 @@ import {
   updateRatesController,
   getTransactionController,
   cancelTransactionController,
-} from '../controller/mpesaController';
+} from '../controller/mpesaController.js';
 
 const router: ExpressRouter = Router();
 

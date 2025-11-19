@@ -16,6 +16,7 @@ interface SellCryptoBody {
     amount: string;
     token: string;
     fromAddress: string;
+    transactionHash?: string;
 }
 /**
  * BUY CRYPTO: Initiate MPESA STK Push for buying crypto

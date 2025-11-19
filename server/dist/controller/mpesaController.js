@@ -264,6 +264,7 @@ export const buyCryptoController = async (req, res) => {
                 cryptoAmount: cryptoAmount.toString(),
                 userAddress: userAddress,
                 timestamp: new Date().toISOString(),
+                direction: 'buy'
             };
             console.log(`[buyCryptoController] Stored pending status for MerchantRequestID: ${stkData.MerchantRequestID}`);
         }
@@ -392,7 +393,10 @@ const processPayment = async (merchantId) => {
         await connectAssetHub();
         if (!assetHubApi)
             throw new Error('Asset Hub API not initialized');
-        if (data.token === 'PAS') {
+        if (data.token === 'PAS' &&
+            typeof cryptoAmount === 'number' &&
+            typeof ASSET_DECIMALS['PAS'] === 'number' &&
+            assetHubApi?.tx?.balances?.transferKeepAlive) {
             // Transfer native PAS on Asset Hub
             const planck = BigInt(Math.floor(cryptoAmount * Math.pow(10, ASSET_DECIMALS['PAS'])));
             const tx = assetHubApi.tx.balances.transferKeepAlive(data.userAddress, planck.toString());
@@ -429,35 +433,40 @@ const processPayment = async (merchantId) => {
                 throw new Error(`Asset ID not found for ${data.token}`);
             const decimals = ASSET_DECIMALS[data.token] || 6;
             const assetAmount = BigInt(Math.floor(cryptoAmount * Math.pow(10, decimals)));
-            const tx = assetHubApi.tx.assets.transfer(assetId, data.userAddress, assetAmount.toString());
-            await new Promise((resolve, reject) => {
-                tx.signAndSend(sender, ({ status, dispatchError }) => {
-                    if (status.isInBlock) {
-                        if (!mpesaStatusStore[merchantId]) {
-                            mpesaStatusStore[merchantId] = { status: 'pending' };
+            if (assetHubApi?.tx?.assets?.transfer && typeof assetId === "number" && typeof data.userAddress === "string") {
+                const tx = assetHubApi.tx.assets.transfer(assetId, data.userAddress, assetAmount.toString());
+                await new Promise((resolve, reject) => {
+                    tx.signAndSend(sender, ({ status, dispatchError }) => {
+                        if (status.isInBlock) {
+                            if (!mpesaStatusStore[merchantId]) {
+                                mpesaStatusStore[merchantId] = { status: 'pending' };
+                            }
+                            console.log(`[processPayment] Transfer complete for ${merchantId} in block ${status.asInBlock.toHex()}`);
+                            mpesaStatusStore[merchantId].status = 'completed';
+                            mpesaStatusStore[merchantId].details = {
+                                ...mpesaStatusStore[merchantId].details,
+                                blockHash: status.asInBlock.toHex(),
+                            };
+                            resolve();
                         }
-                        console.log(`[processPayment] Transfer complete for ${merchantId} in block ${status.asInBlock.toHex()}`);
-                        mpesaStatusStore[merchantId].status = 'completed';
-                        mpesaStatusStore[merchantId].details = {
-                            ...mpesaStatusStore[merchantId].details,
-                            blockHash: status.asInBlock.toHex(),
-                        };
-                        resolve();
-                    }
-                    else if (dispatchError) {
-                        if (!mpesaStatusStore[merchantId]) {
-                            mpesaStatusStore[merchantId] = { status: 'pending' };
+                        else if (dispatchError) {
+                            if (!mpesaStatusStore[merchantId]) {
+                                mpesaStatusStore[merchantId] = { status: 'pending' };
+                            }
+                            console.error(`[processPayment] Transfer failed for ${merchantId}:`, dispatchError.toString());
+                            mpesaStatusStore[merchantId].status = 'transfer_failed';
+                            mpesaStatusStore[merchantId].details = {
+                                ...mpesaStatusStore[merchantId].details,
+                                error: dispatchError.toString(),
+                            };
+                            reject(dispatchError);
                         }
-                        console.error(`[processPayment] Transfer failed for ${merchantId}:`, dispatchError.toString());
-                        mpesaStatusStore[merchantId].status = 'transfer_failed';
-                        mpesaStatusStore[merchantId].details = {
-                            ...mpesaStatusStore[merchantId].details,
-                            error: dispatchError.toString(),
-                        };
-                        reject(dispatchError);
-                    }
+                    });
                 });
-            });
+            }
+            else {
+                throw new Error('assetHubApi.tx.assets.transfer is not available, or required data is missing');
+            }
         }
     }
     catch (error) {
@@ -481,7 +490,7 @@ const processPayment = async (merchantId) => {
 export const sellCryptoController = async (req, res) => {
     try {
         console.log('[sellCryptoController] Received request body:', req.body);
-        const { phone, amount, token, fromAddress } = req.body;
+        const { phone, amount, token, fromAddress, transactionHash } = req.body;
         if (!phone || !amount || !token || !fromAddress) {
             console.error('[sellCryptoController] Missing required fields');
             return res.status(400).json({
@@ -534,7 +543,7 @@ export const sellCryptoController = async (req, res) => {
         // Calculate KES amount to send via MPESA
         const kesAmount = Math.floor(cryptoAmount / EXCHANGE_RATES[token]);
         console.log(kesAmount);
-        if (kesAmount < 5) { //originally 10
+        if (kesAmount < 5) {
             console.error('[sellCryptoController] M-PESA amount too low');
             return res.status(400).json({
                 status: 'failed',
@@ -606,7 +615,26 @@ export const sellCryptoController = async (req, res) => {
             },
         });
         console.log('[sellCryptoController] B2C Response:', b2cResponse.data);
-        // Return success response
+        const merchantRequestId = b2cResponse.data.OriginatorConversationID ||
+            b2cResponse.data.ConversationID ||
+            `sell-${Date.now()}`;
+        // Store sell info in db/memory store with option for the transaction hash
+        mpesaStatusStore[merchantRequestId] = {
+            status: 'pending',
+            token: token,
+            userAddress: fromAddress,
+            cryptoAmount: cryptoAmount.toString(),
+            timestamp: new Date().toISOString(),
+            direction: 'sell',
+            details: {
+                b2cResponse: b2cResponse.data,
+                phone: number,
+                kesAmount: kesAmount,
+                adminAddress: adminAddress,
+                blockHash: transactionHash || "", // Pre-fill if given (client passes after user signs)
+            },
+        };
+        // Respond immediate sell info; transactionHash, if present, is included for fast UX
         return res.json({
             status: 'success',
             message: `M-PESA payment of ${kesAmount} KES initiated to ${number}`,
@@ -615,8 +643,10 @@ export const sellCryptoController = async (req, res) => {
             kesAmount: kesAmount,
             phone: number,
             adminAddress: adminAddress,
+            merchantRequestId: merchantRequestId,
             b2cResponse: b2cResponse.data,
-            instructions: `Please send ${cryptoAmount} ${token} from your wallet (${fromAddress}) to the admin address (${adminAddress}). M-PESA payment will be processed once crypto is received.`,
+            requiresWalletTransfer: true,
+            transactionHash: transactionHash || "", // <-- include for sold record, set from frontend or watcher
         });
     }
     catch (error) {
@@ -806,7 +836,8 @@ export const payoutController = async (req, res) => {
                 error: 'Asset Hub API not initialized',
             });
         }
-        if (token === 'PAS') {
+        if (typeof amountNum === 'number' &&
+            typeof ASSET_DECIMALS['PAS'] === 'number') {
             // Transfer native PAS on Asset Hub
             const planck = BigInt(Math.floor(amountNum * Math.pow(10, ASSET_DECIMALS['PAS'])));
             if (assetHubApi &&
@@ -931,7 +962,7 @@ export const getBalanceController = async (req, res) => {
         if (Array.isArray(address))
             address = address[0];
         if (Array.isArray(token))
-            token = token[0];
+            token = token[0] || 'PAS';
         if (typeof address !== 'string' || !address) {
             return res.status(400).json({
                 status: 'failed',
@@ -962,25 +993,38 @@ export const getBalanceController = async (req, res) => {
         }
         if (token === 'PAS') {
             // Query native PAS balance on Asset Hub
-            const accountInfo = await assetHubApi.query.system.account(address);
-            const balance = accountInfo.data.free.toBigInt();
-            const frozen = accountInfo.data.frozen?.toBigInt() || accountInfo.data.miscFrozen?.toBigInt() || BigInt(0);
-            const locked = accountInfo.data.reserved.toBigInt();
-            const availableBalance = balance - frozen;
-            const balanceFormatted = (Number(availableBalance) / Math.pow(10, decimals)).toFixed(4);
-            const lockedFormatted = (Number(locked) / Math.pow(10, decimals)).toFixed(4);
-            const totalFormatted = (Number(balance) / Math.pow(10, decimals)).toFixed(4);
-            console.log(`[getBalanceController] PAS balance for ${address}: Total=${totalFormatted}, Available=${balanceFormatted}, Frozen=${Number(frozen) / Math.pow(10, decimals)}, Reserved=${lockedFormatted}`);
-            return res.json({
-                status: 'success',
-                address,
-                token,
-                balance: balanceFormatted,
-                total: totalFormatted,
-                locked: lockedFormatted,
-                decimals,
-                chain: 'Paseo Asset Hub',
-            });
+            if (assetHubApi &&
+                assetHubApi.query &&
+                assetHubApi.query.system &&
+                typeof assetHubApi.query.system.account === 'function') {
+                const accountInfo = await assetHubApi.query.system.account(address);
+                const balance = accountInfo.data.free.toBigInt();
+                const frozen = accountInfo.data.frozen?.toBigInt() ||
+                    accountInfo.data.miscFrozen?.toBigInt() ||
+                    BigInt(0);
+                const locked = accountInfo.data.reserved.toBigInt();
+                const availableBalance = balance - frozen;
+                const balanceFormatted = (Number(availableBalance) / Math.pow(10, decimals)).toFixed(4);
+                const lockedFormatted = (Number(locked) / Math.pow(10, decimals)).toFixed(4);
+                const totalFormatted = (Number(balance) / Math.pow(10, decimals)).toFixed(4);
+                console.log(`[getBalanceController] PAS balance for ${address}: Total=${totalFormatted}, Available=${balanceFormatted}, Frozen=${Number(frozen) / Math.pow(10, decimals)}, Reserved=${lockedFormatted}`);
+                return res.json({
+                    status: 'success',
+                    address,
+                    token,
+                    balance: balanceFormatted,
+                    total: totalFormatted,
+                    locked: lockedFormatted,
+                    decimals,
+                    chain: 'Paseo Asset Hub',
+                });
+            }
+            else {
+                return res.status(500).json({
+                    status: 'failed',
+                    error: 'assetHubApi.query.system.account is not available',
+                });
+            }
         }
         else {
             // Query asset balance for USDT, USDC
@@ -991,29 +1035,40 @@ export const getBalanceController = async (req, res) => {
                     error: `Asset ID not configured for ${token}`,
                 });
             }
-            const accountAsset = await assetHubApi.query.assets.account(assetId, address);
-            if (accountAsset.isNone) {
+            if (assetHubApi &&
+                assetHubApi.query &&
+                assetHubApi.query.assets &&
+                typeof assetHubApi.query.assets.account === 'function') {
+                const accountAsset = await assetHubApi.query.assets.account(assetId, address);
+                if (accountAsset.isNone) {
+                    return res.json({
+                        status: 'success',
+                        address,
+                        token,
+                        balance: '0',
+                        decimals,
+                        assetId,
+                        chain: 'Paseo Asset Hub',
+                    });
+                }
+                const assetBalance = accountAsset.unwrap().balance.toBigInt();
+                const balanceFormatted = (Number(assetBalance) / Math.pow(10, decimals)).toFixed(decimals);
                 return res.json({
                     status: 'success',
                     address,
                     token,
-                    balance: '0',
+                    balance: balanceFormatted,
                     decimals,
                     assetId,
                     chain: 'Paseo Asset Hub',
                 });
             }
-            const assetBalance = accountAsset.unwrap().balance.toBigInt();
-            const balanceFormatted = (Number(assetBalance) / Math.pow(10, decimals)).toFixed(decimals);
-            return res.json({
-                status: 'success',
-                address,
-                token,
-                balance: balanceFormatted,
-                decimals,
-                assetId,
-                chain: 'Paseo Asset Hub',
-            });
+            else {
+                return res.status(500).json({
+                    status: 'failed',
+                    error: 'assetHubApi.query.assets.account is not available',
+                });
+            }
         }
     }
     catch (error) {
@@ -1171,6 +1226,7 @@ export const getTransactionHistoryController = (req, res) => {
     const allTransactions = Object.entries(mpesaStatusStore).map(([merchantId, data]) => ({
         merchantRequestId: merchantId,
         ...data,
+        blockHash: data.details?.blockHash,
     }));
     return res.json({
         status: 'success',
@@ -1238,33 +1294,42 @@ export const checkBalanceController = async (req, res) => {
  */
 export const getQuoteController = (req, res) => {
     try {
-        let amount = req.query.amount;
-        let token = req.query.token || 'PAS';
-        let type = req.query.type || 'buy';
-        if (Array.isArray(amount))
-            amount = amount[0];
-        if (Array.isArray(token))
-            token = token[0];
-        if (Array.isArray(type))
-            type = type[0];
-        if (!amount || typeof amount !== 'string') {
+        let amountRaw = req.query.amount;
+        let tokenRaw = req.query.token;
+        let typeRaw = req.query.type;
+        // Normalize arrays to single values
+        let amount = Array.isArray(amountRaw) ? amountRaw[0] : amountRaw;
+        let token = Array.isArray(tokenRaw) ? tokenRaw[0] : tokenRaw;
+        let type = Array.isArray(typeRaw) ? typeRaw[0] : typeRaw;
+        // Provide default values if undefined
+        if (typeof amount === 'undefined')
+            amount = '';
+        if (typeof token === 'undefined')
+            token = 'PAS';
+        if (typeof type === 'undefined')
+            type = 'buy';
+        // Validate amount
+        if (typeof amount !== 'string' || amount.trim() === '') {
             return res.status(400).json({
                 status: 'failed',
                 error: 'Missing or invalid amount parameter',
             });
         }
+        // Validate token type
         if (typeof token !== 'string' || !EXCHANGE_RATES[token]) {
             return res.status(400).json({
                 status: 'failed',
                 error: `Invalid or unsupported token: ${token}. Supported tokens: PAS, USDT, USDC`,
             });
         }
+        // Validate transaction type
         if (typeof type !== 'string' || !['buy', 'sell'].includes(type)) {
             return res.status(400).json({
                 status: 'failed',
                 error: 'Type must be "buy" or "sell"',
             });
         }
+        // Validate parsed amount
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
             return res.status(400).json({
@@ -1272,9 +1337,12 @@ export const getQuoteController = (req, res) => {
                 error: 'Amount must be a positive number',
             });
         }
+        // Ensure exchange rate exists and is a number
         const exchangeRate = EXCHANGE_RATES[token];
-        if (typeof exchangeRate !== 'number')
+        if (typeof exchangeRate !== 'number') {
             throw new Error('Exchange rate undefined');
+        }
+        // Compute amounts
         if (type === 'buy') {
             // User pays KES, receives crypto
             const kesAmount = numAmount;
