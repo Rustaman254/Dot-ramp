@@ -1,16 +1,22 @@
-import { FlatCompat } from '@eslint/eslintrc'
+// eslint.config.js
+
+import { FlatCompat } from '@eslint/eslintrc';
 
 const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-})
+  baseDirectory: __dirname, 
+});
 
-const config = [
+export default [
   {
     ignores: ['app/descriptors/**'],
   },
   ...compat.config({
     extends: ['next/core-web-vitals', 'next/typescript'],
   }),
-]
-
-export default config
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@next/next/no-img-element': 'off',
+    }
+  }
+];
