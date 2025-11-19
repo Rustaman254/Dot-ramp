@@ -48,7 +48,7 @@ const tokenLookup: Record<string, { icon: string; color: string }> = {
 const explorerUrl = (hash: string) =>
   `https://assethub-paseo.subscan.io/block/${hash}`;
 
-const PROD_URL = "http://localhost:8000";
+const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
 
 const Transactions: React.FC = () => {
   const router = useRouter();
@@ -60,19 +60,28 @@ const Transactions: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const walletJson = typeof window !== "undefined" && localStorage.getItem(LOCAL_STORAGE_KEY);
+useEffect(() => {
+  if (typeof window !== "undefined") {
+    const walletJson = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (walletJson) {
-      const parsed = JSON.parse(walletJson);
-      setWalletConnected(true);
-      setWalletAddress(parsed.address);
-      setUsername(parsed.username);
+      try {
+        const parsed = JSON.parse(walletJson);
+        setWalletConnected(true);
+        setWalletAddress(parsed.address);
+        setUsername(parsed.username);
+      } catch {
+        setWalletConnected(false);
+        setWalletAddress("");
+        setUsername("");
+      }
     } else {
       setWalletConnected(false);
       setWalletAddress("");
       setUsername("");
     }
-  }, []);
+  }
+}, []);
+
 
   const handleOpenWalletSelector = () => { };
 

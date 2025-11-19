@@ -70,7 +70,7 @@ const getMpesaFee = (amount: number) => {
 
 const SERVICE_FEE = 0.02;
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-const PROD_URL = "http://localhost:8000";
+const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
 const rateMap: Record<string, string> = {
   PAS: "polkadot",
   USDT: "tether",
@@ -110,18 +110,36 @@ const Home: React.FC = () => {
   const [liveRatesKES, setLiveRatesKES] = useState<{ [symbol: string]: number }>({});
 
   useEffect(() => {
-    const walletJson = typeof window !== "undefined" && localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (walletJson) {
-      const parsed = JSON.parse(walletJson);
-      const walletMeta = walletProvidersMeta.find((w) => w.id === parsed.walletId);
-      if (walletMeta) {
-        setSelectedWalletInfo(walletMeta);
-        setWalletConnected(true);
-        setWalletAddress(parsed.address);
-        setUsername(parsed.username);
+    if (typeof window !== "undefined") {
+      try {
+        const walletJson = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (walletJson) {
+          const parsed = JSON.parse(walletJson);
+          const walletMeta = walletProvidersMeta.find(
+            (w) => w.id === parsed.walletId
+          );
+          if (walletMeta) {
+            setSelectedWalletInfo(walletMeta);
+          }
+          setWalletConnected(true);
+          setWalletAddress(parsed.address);
+          setUsername(parsed.username);
+        } else {
+          setSelectedWalletInfo(null);
+          setWalletConnected(false);
+          setWalletAddress("");
+          setUsername("");
+        }
+      } catch (e) {
+        // If there’s a parsing error, reset connection state
+        setSelectedWalletInfo(null);
+        setWalletConnected(false);
+        setWalletAddress("");
+        setUsername("");
       }
     }
   }, []);
+
 
   useEffect(() => {
     fetch(`${PROD_URL}/api/v1/tokens`)
