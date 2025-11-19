@@ -212,13 +212,14 @@ const Home: React.FC = () => {
       setShowWalletSelector(false);
       setAccounts([]);
       setSelectedWalletInfo((selectedWalletInfo) => {
+        // This browser-only block is already properly guarded
         if (selectedWalletInfo && typeof window !== "undefined") {
           localStorage.setItem(
             LOCAL_STORAGE_KEY,
             JSON.stringify({
               walletId: selectedWalletInfo.id,
               address,
-              username: name
+              username: name,
             })
           );
         }
@@ -226,6 +227,7 @@ const Home: React.FC = () => {
       });
     }
   }, [showWalletSelector, accounts]);
+
 
   const handleSelectAccount = (account: Account) => {
     const address = account.address;
@@ -250,6 +252,7 @@ const Home: React.FC = () => {
     });
   };
 
+
   const handleDisconnect = () => {
     setWalletConnected(false);
     setWalletAddress("");
@@ -261,6 +264,7 @@ const Home: React.FC = () => {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
   };
+
   const copyAddress = () => {
     if (typeof window !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(walletAddress);
@@ -268,6 +272,7 @@ const Home: React.FC = () => {
       setTimeout(() => setCopiedAddress(false), 2000);
     }
   };
+
 
   const formatAddress = (addr: string): string =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
