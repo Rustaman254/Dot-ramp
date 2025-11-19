@@ -1,4 +1,4 @@
-export declare function sendMpesaStkPush({ shortCode, passkey, amount, phone, token, callbackUrl, accountReference, transactionDesc }: {
+export declare function sendMpesaStkPush({ shortCode, passkey, amount, phone, token, callbackUrl, accountReference, transactionDesc, isLive, statusStore }: {
     shortCode: string;
     passkey: string;
     amount: number;
@@ -7,5 +7,7 @@ export declare function sendMpesaStkPush({ shortCode, passkey, amount, phone, to
     callbackUrl: string;
     accountReference: string;
     transactionDesc: string;
+    isLive?: boolean;
+    statusStore?: any;
 }): Promise<any>;
 //# sourceMappingURL=mpesaSTKPush.d.ts.map

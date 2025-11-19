@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 type TransactionStatus = "completed" | "timeout";
-type TransactionDirection = "buy";
+type TransactionDirection = "buy" | "sell";
 
 interface Transaction {
   id: string;
@@ -19,6 +19,21 @@ interface Transaction {
   hash: string;
   date: string;
   detailStatus: string;
+}
+
+interface RawTransaction {
+  merchantRequestId: string;
+  token: string;
+  cryptoAmount: string | number;
+  status: TransactionStatus;
+  details: {
+    blockHash?: string;
+    Remarks?: string;
+    TransactionDesc?: string;
+    ResultDesc?: string;
+    ResponseDescription?: string;
+  };
+  timestamp: string;
 }
 
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
@@ -59,7 +74,7 @@ const Transactions: React.FC = () => {
     }
   }, []);
 
-  const handleOpenWalletSelector = () => {};
+  const handleOpenWalletSelector = () => { };
 
   const formatAddress = (addr: string): string =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -87,13 +102,15 @@ const Transactions: React.FC = () => {
         }
         setTransactions(
           data.transactions
-            .map((tx: any) => ({
+            .map((tx: RawTransaction) => ({
               id: tx.merchantRequestId,
               token: tx.token,
               amountToken: Number(tx.cryptoAmount),
               tokenIcon: tokenLookup[tx.token]?.icon || "",
               status: tx.status as TransactionStatus,
-              direction: "buy" as TransactionDirection,
+              direction: (tx.details && (tx.details.Remarks?.toLowerCase().includes("sell") || tx.details.TransactionDesc?.toLowerCase().includes("sell")))
+                ? "sell"
+                : "buy",
               hash: tx.details.blockHash || "",
               date: tx.timestamp,
               detailStatus: tx.details.ResultDesc || tx.details.ResponseDescription || "",
@@ -116,7 +133,7 @@ const Transactions: React.FC = () => {
         username={username}
         walletAddress={walletAddress}
         formatAddress={formatAddress}
-        onShowWalletPopup={() => {}}
+        onShowWalletPopup={() => { }}
         onConnectWallet={handleOpenWalletSelector}
         onShowTransactions={() => router.push("/transactions")}
         integrationLink={INTEGRATION_LINK}

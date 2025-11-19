@@ -1,3 +1,3 @@
-export declare const getMpesaTimestamp: () => string;
-export declare const getMpesaPassword: (shortcode: string, passkey: string, timestamp: string) => string;
+export declare function getMpesaTimestamp(): string;
+export declare function getMpesaPassword(shortCode: string, passkey: string, timestamp: string): string;
 //# sourceMappingURL=mpesaUtils.d.ts.map

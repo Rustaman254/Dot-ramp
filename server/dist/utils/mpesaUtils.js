@@ -1,11 +1,14 @@
-export const getMpesaTimestamp = () => {
+export function getMpesaTimestamp() {
     const date = new Date();
-    return (date.getFullYear() +
-        ("0" + (date.getMonth() + 1)).slice(-2) +
-        ("0" + date.getDate()).slice(-2) +
-        ("0" + date.getHours()).slice(-2) +
-        ("0" + date.getMinutes()).slice(-2) +
-        ("0" + date.getSeconds()).slice(-2));
-};
-export const getMpesaPassword = (shortcode, passkey, timestamp) => Buffer.from(shortcode + passkey + timestamp).toString("base64");
+    const pad = (n) => n.toString().padStart(2, '0');
+    return date.getFullYear().toString()
+        + pad(date.getMonth() + 1)
+        + pad(date.getDate())
+        + pad(date.getHours())
+        + pad(date.getMinutes())
+        + pad(date.getSeconds());
+}
+export function getMpesaPassword(shortCode, passkey, timestamp) {
+    return Buffer.from(shortCode + passkey + timestamp).toString('base64');
+}
 //# sourceMappingURL=mpesaUtils.js.map

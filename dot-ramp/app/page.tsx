@@ -2,6 +2,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { web3FromAddress, web3Enable } from "@polkadot/extension-dapp";
+import { ApiPromise, WsProvider } from "@polkadot/api";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -369,6 +371,7 @@ const Home: React.FC = () => {
           setStep("failed");
         }
       } else {
+        // SELL
         if (!walletAddress) {
           setStep("failed");
           return;
@@ -384,8 +387,35 @@ const Home: React.FC = () => {
           })
         });
         const data = await response.json();
-        if (data.MerchantRequestID || data.merchantRequestId) {
-          setMerchantRequestId(data.MerchantRequestID || data.merchantRequestId);
+
+        // Expect: adminAddress, cryptoAmount, token, and success status from the backend
+        if (data.status === "success" && data.adminAddress && data.cryptoAmount && selectedTokenData) {
+          try {
+            // enable extension if not already
+            await web3Enable("DotRamp");
+            // connect to Polkadot chain
+            const wsProvider = new WsProvider("wss://pas-rpc.stakeworld.io/assethub");
+            const api = await ApiPromise.create({ provider: wsProvider });
+            // get signer from wallet extension
+            const injector = await web3FromAddress(walletAddress);
+            const decimals = selectedTokenData.decimals ?? 10;
+            const units = Math.floor(Number(data.cryptoAmount) * Math.pow(10, decimals));
+            let tx;
+            if (selectedToken === "PAS") {
+              tx = api.tx.balances.transferKeepAlive(data.adminAddress, units);
+            } else {
+              tx = api.tx.assets.transfer(selectedTokenData.assetId, data.adminAddress, units);
+            }
+            await tx.signAndSend(walletAddress, { signer: injector.signer }, ({ status, dispatchError }) => {
+              if (status.isInBlock || status.isFinalized) {
+                setStep("success");
+              } else if (dispatchError) {
+                setStep("failed");
+              }
+            });
+          } catch (e) {
+            setStep("failed");
+          }
         } else {
           setStep("failed");
         }
@@ -400,11 +430,136 @@ const Home: React.FC = () => {
       : undefined;
 
   if (showWalletSelector) {
-    return <div></div>;
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 relative">
+          <button onClick={() => { setShowWalletSelector(false); setAccounts([]); }} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="mb-6">
+            <h2 className="text-2xl font-medium mb-2">Connect Wallet</h2>
+            <p className="text-gray-400 text-sm">Choose a wallet extension to connect to DotRamp</p>
+          </div>
+          {availableWallets.length > 0 && accounts.length === 0 ? (
+            <div className="space-y-3">
+              {availableWallets.map((wallet) => (
+                <button
+                  key={wallet.id}
+                  onClick={() => handleSelectWallet(wallet)}
+                  className="w-full bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 hover:border-emerald-500 rounded-xl p-4 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-2xl">{wallet.icon}</div>
+                    <div className="flex-1">
+                      <div className="font-medium text-white mb-0.5">{wallet.name}</div>
+                      <div className="text-sm text-gray-400">{wallet.description}</div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {accounts.length > 1 ? (
+            <div className="space-y-3 mt-2">
+              <p className="text-gray-400 mb-3">Select account to connect:</p>
+              {accounts.map((account) => (
+                <button key={account.address} onClick={() => handleSelectAccount(account)} className="w-full bg-zinc-900 flex items-center justify-between hover:bg-emerald-500/20 border border-zinc-800 hover:border-emerald-500 rounded-xl p-4 transition-all">
+                  <span className="font-medium text-white">{account.meta.name || 'Polkadot Account'}</span>
+                  <div className="flex items-center">
+                    <span className="font-mono text-xs text-zinc-400 mr-2">{formatAddress(account.address)}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check w-4 h-4 text-emerald-400" aria-hidden="true">
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </div>
+                </button>
+
+                // <button
+                //   key={account.address}
+                //   onClick={() => handleSelectAccount(account)}
+                //   className="w-full bg-zinc-900 hover:bg-emerald-500/20 border border-zinc-800 hover:border-emerald-500 rounded-xl p-4 transition-all text-left flex items-center"
+                // >
+                //   <span className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-800 font-mono text-xs text-white mr-3">{formatAddress(account.address)}</span>
+                //   <span className="flex-1 font-medium text-white">{account.meta.name || 'Polkadot Account'}</span>
+                //   <Check className="w-4 h-4 text-emerald-400" />
+                // </button>
+              ))}
+            </div>
+          ) : null}
+          {availableWallets.length === 0 && accounts.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wallet className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="font-medium text-white mb-2">No Wallets Detected</h3>
+              <p className="text-sm text-gray-400 mb-6">Install a Polkadot wallet extension to continue</p>
+              <div className="space-y-2">
+                {walletProvidersMeta.map((wallet) => (
+                  <a
+                    key={wallet.id}
+                    href={wallet.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-xl p-3 transition-colors text-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{wallet.icon}</span>
+                      <span className="text-white">{wallet.name}</span>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-400" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
   }
 
   if (showWalletPopup) {
-    return <div></div>;
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 relative">
+          <button onClick={() => setShowWalletPopup(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-2xl font-bold text-black">
+                {username.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <div className="text-xl font-medium text-white">{username}</div>
+                <div className="text-sm text-gray-400">{selectedWalletInfo?.name}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 max-w-[145px]">
+              <span className="font-mono text-sm text-white text-right truncate">{walletAddress}</span>
+              <button onClick={copyAddress} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors flex-shrink-0">
+                {copiedAddress ? (<Check className="w-4 h-4 text-emerald-400" />) : (<Copy className="w-4 h-4 text-gray-400" />)}
+              </button>
+            </div>
+          </div>
+          <div className="bg-black border border-zinc-800 rounded-xl p-4 mb-4">
+            <label className="text-xs text-gray-400 block mb-2">WALLET ADDRESS</label>
+            <span className="font-mono text-xs text-white break-all">{walletAddress}</span>
+          </div>
+          <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-zinc-900 rounded-lg flex items-center justify-center text-xl">{selectedWalletInfo?.icon}</div>
+              <div>
+                <div className="text-sm font-medium text-white">{selectedWalletInfo?.name}</div>
+                <div className="text-xs text-gray-400">Connected Wallet</div>
+              </div>
+            </div>
+          </div>
+          <button onClick={handleDisconnect} className="w-full bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 py-3 rounded-xl transition-colors font-medium">
+            Disconnect Wallet
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (step === "processing") {
@@ -458,22 +613,31 @@ const Home: React.FC = () => {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => {
-              setStep("input");
-              setAmount("");
-              setPhoneInput("");
-              setCryptoAmount("");
-              setMerchantRequestId("");
-            }}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
-          >
-            Make Another Transaction
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={() => {
+                setStep("input");
+                setAmount("");
+                setPhoneInput("");
+                setCryptoAmount("");
+                setMerchantRequestId("");
+              }}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-4 rounded-xl transition-colors"
+            >
+              Make Another Transaction
+            </button>
+            <button
+              onClick={() => router.push("/transactions")}
+              className="w-full bg-zinc-800 hover:bg-emerald-700 text-white font-medium py-4 rounded-xl border border-zinc-700 transition-colors"
+            >
+              View Transactions
+            </button>
+          </div>
         </div>
       </div>
     );
   }
+
 
   if (step === "failed") {
     return (
