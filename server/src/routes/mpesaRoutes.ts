@@ -6,7 +6,7 @@ import {
   callbackUrlController,
   mpesaStatusController,
   payoutController,
-  getBalanceController,  // Import this
+  getBalanceController, 
   getRatesController,
   getTokensController,
   healthCheckController,

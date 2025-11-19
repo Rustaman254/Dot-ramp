@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import Header from "@/app/components/header";
 import { Wallet, Clock, X, ExternalLink, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 type TransactionStatus = "completed" | "timeout";
 type TransactionDirection = "buy" | "sell";
@@ -52,49 +51,61 @@ const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
 
 const Transactions: React.FC = () => {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [username, setUsername] = useState("");
-  // showWalletPopup is not used, so we remove it.
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-useEffect(() => {
-  if (typeof window !== "undefined") {
-    const walletJson = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (walletJson) {
+  // Set mounted state
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Load wallet from localStorage
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    if (typeof window !== "undefined") {
       try {
-        const parsed = JSON.parse(walletJson);
-        setWalletConnected(true);
-        setWalletAddress(parsed.address);
-        setUsername(parsed.username);
-      } catch {
+        const walletJson = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (walletJson) {
+          const parsed = JSON.parse(walletJson);
+          setWalletConnected(true);
+          setWalletAddress(parsed.address);
+          setUsername(parsed.username);
+        } else {
+          setWalletConnected(false);
+          setWalletAddress("");
+          setUsername("");
+        }
+      } catch (e) {
+        console.error("Error reading wallet from localStorage:", e);
         setWalletConnected(false);
         setWalletAddress("");
         setUsername("");
       }
-    } else {
-      setWalletConnected(false);
-      setWalletAddress("");
-      setUsername("");
     }
-  }
-}, []);
-
+  }, [isMounted]);
 
   const handleOpenWalletSelector = () => { };
 
   const formatAddress = (addr: string): string =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
+  // Fetch transactions
   useEffect(() => {
+    if (!isMounted) return;
+    
     if (!walletConnected || !walletAddress) {
       setLoading(false);
       setTransactions([]);
       setError(null);
       return;
     }
+
     async function fetchTx() {
       try {
         setLoading(true);
@@ -126,14 +137,31 @@ useEffect(() => {
             }))
             .sort((a: Transaction, b: Transaction) => new Date(b.date).getTime() - new Date(a.date).getTime())
         );
-      } catch {
+      } catch (err) {
+        console.error("Error fetching transactions:", err);
         setError("Could not load transactions");
       } finally {
         setLoading(false);
       }
     }
     fetchTx();
-  }, [walletConnected, walletAddress]);
+  }, [isMounted, walletConnected, walletAddress]);
+
+  // Prevent hydration mismatch - show loading state during SSR
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="rounded-2xl p-6">
+            <div className="h-8 w-48 bg-zinc-800 animate-pulse rounded mb-6"></div>
+            <div className="flex items-center justify-center py-12">
+              <Clock className="w-8 h-8 text-gray-600 animate-spin" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">

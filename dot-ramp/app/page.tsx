@@ -124,18 +124,9 @@ const Home: React.FC = () => {
           setWalletConnected(true);
           setWalletAddress(parsed.address);
           setUsername(parsed.username);
-        } else {
-          setSelectedWalletInfo(null);
-          setWalletConnected(false);
-          setWalletAddress("");
-          setUsername("");
         }
       } catch (e) {
-        // If there’s a parsing error, reset connection state
-        setSelectedWalletInfo(null);
-        setWalletConnected(false);
-        setWalletAddress("");
-        setUsername("");
+        console.error("Error reading wallet from localStorage:", e);
       }
     }
   }, []);
@@ -270,11 +261,12 @@ const Home: React.FC = () => {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
   };
-
   const copyAddress = () => {
-    navigator.clipboard.writeText(walletAddress);
-    setCopiedAddress(true);
-    setTimeout(() => setCopiedAddress(false), 2000);
+    if (typeof window !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(walletAddress);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    }
   };
 
   const formatAddress = (addr: string): string =>
