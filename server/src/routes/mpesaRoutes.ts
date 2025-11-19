@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Router as ExpressRouter } from 'express';
 import {
   buyCryptoController,
   sellCryptoController,
@@ -19,7 +20,7 @@ import {
   cancelTransactionController,
 } from '../controller/mpesaController';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Buy/Sell routes
 router.post('/buy', buyCryptoController);
