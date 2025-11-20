@@ -818,6 +818,7 @@ const HomeClient: React.FC = () => {
         onConnectWallet={handleOpenWalletSelector}
         onShowTransactions={() => router.push("/transactions")}
         integrationLink="/dev-docs"
+        onLogout={handleDisconnect}
       />
       <div className="max-w-4xl mx-auto px-4 py-8">
         {!walletConnected ? (

@@ -67,7 +67,7 @@ const Transactions: React.FC = () => {
   // Load wallet from localStorage
   useEffect(() => {
     if (!isMounted) return;
-    
+
     if (typeof window !== "undefined") {
       try {
         const walletJson = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -98,13 +98,22 @@ const Transactions: React.FC = () => {
   // Fetch transactions
   useEffect(() => {
     if (!isMounted) return;
-    
+
     if (!walletConnected || !walletAddress) {
       setLoading(false);
       setTransactions([]);
       setError(null);
       return;
     }
+
+    const handleLogout = () => {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      setWalletConnected(false);
+      setWalletAddress("");
+      setUsername("");
+      setTransactions([]);
+      router.push("/");
+    };
 
     async function fetchTx() {
       try {
