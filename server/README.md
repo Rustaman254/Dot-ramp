@@ -57,6 +57,11 @@ MPESA_CALLBACK=https://yourdomain.com/api/v1/callback
 MPESA_B2C_RESULT_URL=https://yourdomain.com/api/v1/b2c/result
 MPESA_B2C_TIMEOUT_URL=https://yourdomain.com/api/v1/b2c/timeout
 
+# Africa's Talking Credentials
+AFRICASTALKING_USERNAME=your_africastalking_username
+AFRICASTALKING_API_KEY=your_africastalking_api_key
+
+
 # B2C Configuration
 MPESA_INITIATOR_NAME=testapi
 MPESA_SECURITY_CREDENTIAL=your_security_credential

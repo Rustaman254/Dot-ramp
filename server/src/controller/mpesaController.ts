@@ -6,6 +6,7 @@ import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { mnemonicValidate } from '@polkadot/util-crypto';
 import { getAccessToken } from '../utils/mpesaAuth.js';
 import { getMpesaTimestamp, getMpesaPassword } from '../utils/mpesaUtils.js';
+import { sendSMS } from '../utils/sendSMS.js';
 dotenv.config();
 
 const PASEO_ASSET_HUB_ENDPOINT = 'wss://pas-rpc.stakeworld.io/assethub';
@@ -358,7 +359,8 @@ export const buyCryptoController = async (
         cryptoAmount: cryptoAmount.toString(),
         userAddress: userAddress,
         timestamp: new Date().toISOString(),
-        direction: 'buy'
+        direction: 'buy',
+        phone: number // Add phone number here
       };
       console.log(`[buyCryptoController] Stored pending status for MerchantRequestID: ${stkData.MerchantRequestID}`);
     }
@@ -514,6 +516,11 @@ const processPayment = async (merchantId: string): Promise<void> => {
               ...mpesaStatusStore[merchantId].details,
               blockHash: status.asInBlock.toHex(),
             };
+            // Send SMS notification
+            if (data.phone && data.userAddress && data.cryptoAmount && data.token) {
+              const message = `Your purchase of ${data.cryptoAmount} ${data.token} has been successfully completed and sent to ${data.userAddress}.`;
+              await sendSMS(data.phone, message);
+            }
             resolve();
           } else if (dispatchError) {
             console.error(`[processPayment] Transfer failed for ${merchantId}:`, dispatchError.toString());
@@ -547,6 +554,11 @@ const processPayment = async (merchantId: string): Promise<void> => {
                 ...mpesaStatusStore[merchantId].details,
                 blockHash: status.asInBlock.toHex(),
               };
+              // Send SMS notification
+              if (data.phone && data.userAddress && data.cryptoAmount && data.token) {
+                const message = `Your purchase of ${data.cryptoAmount} ${data.token} has been successfully completed and sent to ${data.userAddress}.`;
+                await sendSMS(data.phone, message);
+              }
               resolve();
             } else if (dispatchError) {
               if (!mpesaStatusStore[merchantId]) {
@@ -748,6 +760,7 @@ export const sellCryptoController = async (
       cryptoAmount: cryptoAmount.toString(),
       timestamp: new Date().toISOString(),
       direction: 'sell',
+      phone: number, // Add phone number here
       details: {
         b2cResponse: b2cResponse.data,
         phone: number,
@@ -756,6 +769,13 @@ export const sellCryptoController = async (
         blockHash: transactionHash || "", // Pre-fill if given (client passes after user signs)
       },
     };
+
+    // Send SMS notification
+    if (number && fromAddress && cryptoAmount && token && kesAmount) {
+      const message = `Your sale of ${cryptoAmount} ${token} for ${kesAmount} KES has been initiated. You will receive ${kesAmount} KES shortly to ${number}.`;
+      await sendSMS(number, message);
+    }
+
 
     // Respond immediate sell info; transactionHash, if present, is included for fast UX
     return res.json({
