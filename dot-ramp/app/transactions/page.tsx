@@ -47,7 +47,7 @@ const tokenLookup: Record<string, { icon: string; color: string }> = {
 const explorerUrl = (hash: string) =>
   `https://assethub-paseo.subscan.io/block/${hash}`;
 
-const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
+const PROD_URL = "http://localhost:8000";
 
 const Transactions: React.FC = () => {
   const router = useRouter();

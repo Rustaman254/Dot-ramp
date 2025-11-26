@@ -249,7 +249,9 @@ export const buyCryptoController = async (
     console.log('[buyCryptoController] Received request body:', req.body);
 
     const { phone, amount: kesAmount, token = 'PAS', userAddress } = req.body;
-
+    if(phone){
+      console.log(phone)
+    }
     if (!userAddress) {
       console.error('[buyCryptoController] Missing user wallet address');
       return res.status(400).json({
@@ -518,7 +520,9 @@ const processPayment = async (merchantId: string): Promise<void> => {
               blockHash: status.asInBlock.toHex(),
             };
             // Send SMS notification
+            console.log('[processPayment] Checking conditions to send SMS:', { phone: data.phone, userAddress: data.userAddress, cryptoAmount: data.cryptoAmount, token: data.token });
             if (data.phone && data.userAddress && data.cryptoAmount && data.token) {
+              console.log('[processPayment] Conditions met. Sending SMS...');
               const message = `Your purchase of ${data.cryptoAmount} ${data.token} has been successfully completed and sent to ${data.userAddress}.`;
               await sendSMS(data.phone, message);
             }
@@ -556,7 +560,9 @@ const processPayment = async (merchantId: string): Promise<void> => {
                 blockHash: status.asInBlock.toHex(),
               };
               // Send SMS notification
+              console.log('[processPayment] Checking conditions to send SMS:', { phone: data.phone, userAddress: data.userAddress, cryptoAmount: data.cryptoAmount, token: data.token });
               if (data.phone && data.userAddress && data.cryptoAmount && data.token) {
+                console.log('[processPayment] Conditions met. Sending SMS...');
                 const message = `Your purchase of ${data.cryptoAmount} ${data.token} has been successfully completed and sent to ${data.userAddress}.`;
                 await sendSMS(data.phone, message);
               }

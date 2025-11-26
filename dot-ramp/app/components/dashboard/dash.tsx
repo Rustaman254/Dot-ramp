@@ -70,7 +70,7 @@ const getMpesaFee = (amount: number) => {
 
 const SERVICE_FEE = 0.02;
 const LOCAL_STORAGE_KEY = "dotramp_wallet_connected";
-const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || "http://localhost:8000";
+const PROD_URL = "http://localhost:8000";
 const rateMap: Record<string, string> = {
   PAS: "polkadot",
   USDT: "tether",
