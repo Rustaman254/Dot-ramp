@@ -97,6 +97,7 @@ interface MpesaStatusStoreEntry {
   cryptoAmount?: string;
   timestamp?: string;
   direction?: 'buy' | 'sell';
+  phone?: string;
 }
 interface StkPushResponse {
   MerchantRequestID?: string;
@@ -505,7 +506,7 @@ const processPayment = async (merchantId: string): Promise<void> => {
       const tx = assetHubApi.tx.balances.transferKeepAlive(data.userAddress, planck.toString());
 
       await new Promise<void>((resolve, reject) => {
-        tx.signAndSend(sender, ({ status, dispatchError }) => {
+        tx.signAndSend(sender, async ({ status, dispatchError }) => {
           if (!mpesaStatusStore[merchantId]) {
             mpesaStatusStore[merchantId] = { status: 'pending' };
           }
@@ -543,7 +544,7 @@ const processPayment = async (merchantId: string): Promise<void> => {
       if (assetHubApi?.tx?.assets?.transfer && typeof assetId === "number" && typeof data.userAddress === "string") {
         const tx = assetHubApi.tx.assets.transfer(assetId, data.userAddress, assetAmount.toString());
         await new Promise<void>((resolve, reject) => {
-          tx.signAndSend(sender, ({ status, dispatchError }) => {
+          tx.signAndSend(sender, async ({ status, dispatchError }) => {
             if (status.isInBlock) {
               if (!mpesaStatusStore[merchantId]) {
                 mpesaStatusStore[merchantId] = { status: 'pending' };
@@ -760,7 +761,7 @@ export const sellCryptoController = async (
       cryptoAmount: cryptoAmount.toString(),
       timestamp: new Date().toISOString(),
       direction: 'sell',
-      phone: number, // Add phone number here
+      phone: phone, // Add phone number here
       details: {
         b2cResponse: b2cResponse.data,
         phone: number,
@@ -772,7 +773,7 @@ export const sellCryptoController = async (
 
     // Send SMS notification
     if (number && fromAddress && cryptoAmount && token && kesAmount) {
-      const message = `Your sale of ${cryptoAmount} ${token} for ${kesAmount} KES has been initiated. You will receive ${kesAmount} KES shortly to ${number}.`;
+      const message = `Your sale of ${cryptoAmount} ${token} for ${kesAmount} KES has been initiated. You will receive ${kesAmount} KES shortly to ${phone}.`;
       await sendSMS(number, message);
     }
 
