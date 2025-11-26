@@ -1,11 +1,11 @@
+import './config/env.js';
 import AfricasTalking from 'africastalking';
 
 const AT_USERNAME = process.env.AFRICASTALKING_USERNAME;
 const AT_API_KEY = process.env.AFRICASTALKING_API_KEY;
 
 if (!AT_USERNAME || !AT_API_KEY) {
-    console.error("Africa's Talking API credentials are not set in environment variables.");
-    process.exit(1); // Exit if credentials are not set
+    throw new Error("Africa's Talking API credentials are not set in environment variables.");
 }
 
 const africastalking = AfricasTalking({

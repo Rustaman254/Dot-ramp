@@ -1,11 +1,9 @@
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 
 import mpesaRoutes from './routes/mpesaRoutes.js';
 import { disconnectApis } from './controller/mpesaController.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
